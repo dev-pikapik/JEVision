@@ -1,19 +1,60 @@
 import AppKit
+import JEVisionCore
 import JEVisionHands
 
 /// Starts JEVision: the app, or with `--serve-cli <folder>` the host of a `jevision run
 /// --through-app`, which runs the command in the app's name, without windows or a Dock icon.
 @main
 enum Launch {
-  static func main() {
+  @MainActor static func main() {
     let arguments = CommandLine.arguments
     if let index = arguments.firstIndex(of: CLIBridge.serveArgument), arguments.indices.contains(index + 1) {
       NSApplication.shared.setActivationPolicy(.prohibited)
       let folder = URL(filePath: arguments[index + 1], directoryHint: .isDirectory)
       exit(CLIBridge.serve(folder, helper: CommandLineTool.bundled.tool))
     }
-    if Profile.current.isolated { isolate(Profile.current) }
-    JEVisionApp.main()
+    // A rejected preferences file cannot supply the error dialog's language.
+    setLanguage(tag: AppLanguage.resolve(saved: "", system: AppLanguage.systemLanguages(), available: AppLanguage.languages(in: .main)))
+    do {
+      try startGUI()
+    } catch {
+      showPreferencesFailure(error)
+      exit((error as? AppPreferences.Failure)?.status ?? 3)
+    }
+  }
+
+  /// The application closure is deliberately deferred until compatibility and legacy backup
+  /// complete: even the App's stored-property initializers must not run before this gate.
+  @MainActor static func startGUI(_ profile: Profile = .current, application: () -> Void = { JEVisionApp.main() }) throws {
+    try AppPreferences.prepareForGUI(profile)
+    if profile.isolated { isolate(profile) }
+    watchPreferencesFailures()
+    application()
+  }
+
+  /// Installed before the app initializes: a refused binding or background write produces the
+  /// same visible explanation. Repeated timer writes do not stack identical modal alerts.
+  @MainActor private static func watchPreferencesFailures() {
+    let shown = PreferencesFailures()
+    _ = NotificationCenter.default.addObserver(forName: AppPreferences.refusedWrite, object: nil, queue: .main) { note in
+      guard let failure = note.userInfo?[AppPreferences.failureKey] as? AppPreferences.Failure else { return }
+      MainActor.assumeIsolated {
+        if shown.codes.insert(failure.code).inserted { showPreferencesFailure(failure) }
+      }
+    }
+  }
+
+  @MainActor private final class PreferencesFailures: @unchecked Sendable {
+    var codes: Set<String> = []
+  }
+
+  @MainActor private static func showPreferencesFailure(_ error: any Error) {
+    let alert = NSAlert()
+    alert.alertStyle = .warning
+    alert.messageText = String(localized: "Something went wrong")
+    alert.informativeText = error.localizedDescription
+    alert.addButton(withTitle: String(localized: "OK"))
+    alert.runModal()
   }
 
   /// What AppKit reads before the app's code runs, set for a separate profile: it neither restores

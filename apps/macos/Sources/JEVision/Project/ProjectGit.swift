@@ -1,3 +1,4 @@
+import JEVisionHands
 import AppKit
 import JEVisionCore
 import Observation
@@ -177,7 +178,7 @@ final class ProjectGit {
         openSignInPage()
         let account = try await waitForSignIn(code, clientID: clientID)
         signInCode = nil
-        UserDefaults.standard.set(clientID, forKey: Self.signedInClientIDKey)
+        AppPreferences.set(clientID, forKey: Self.signedInClientIDKey, in: Profile.current.defaults)
         await show(.success(account))
       } catch is CancellationError {
       } catch {
@@ -228,7 +229,7 @@ final class ProjectGit {
     Task {
       let result = await Task.detached(priority: .utility) { Result { try githubUseCliAccount() } }.value
       if case .success = result {
-        UserDefaults.standard.removeObject(forKey: Self.signedInClientIDKey)
+        AppPreferences.removeObject(forKey: Self.signedInClientIDKey, in: Profile.current.defaults)
       }
       await show(result)
     }
@@ -241,8 +242,8 @@ final class ProjectGit {
       if case .failure(let error) = result {
         await show(.failure(error))
       } else {
-        signedOut = SignedOut(clientID: UserDefaults.standard.string(forKey: Self.signedInClientIDKey))
-        UserDefaults.standard.removeObject(forKey: Self.signedInClientIDKey)
+        signedOut = SignedOut(clientID: Profile.current.defaults.string(forKey: Self.signedInClientIDKey))
+        AppPreferences.removeObject(forKey: Self.signedInClientIDKey, in: Profile.current.defaults)
         await show(.failure(GitError.GitHubSignedOut))
       }
     }

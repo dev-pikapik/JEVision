@@ -224,6 +224,7 @@ private struct CIWorkflowSheet: View {
 struct ResetSettingsSection: View {
   @State private var confirms = false
   @State private var restartFailed = false
+  @State private var failure: String?
 
   var body: some View {
     Section {
@@ -244,11 +245,16 @@ struct ResetSettingsSection: View {
     } message: {
       Text("Settings are reset. Quit JEVision and open it again to finish.")
     }
+    .alert("Something went wrong", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
+      Button("OK") {}
+    } message: { Text(failure ?? "") }
   }
 
   private func reset() {
-    SettingsReset.reset(Profile.current.defaults, domain: Profile.current.defaultsDomain)
-    restartFailed = !Relaunch.now()
+    do {
+      try SettingsReset.reset(Profile.current.defaults, domain: Profile.current.defaultsDomain)
+      restartFailed = !Relaunch.now()
+    } catch { failure = error.localizedDescription }
   }
 }
 
@@ -258,12 +264,14 @@ enum SettingsReset {
   /// welcome window was seen.
   static let kept: Set<String> = [
     ProjectStore.Key.recent, ProjectStore.Key.current, ProjectStore.Key.selection, ProjectStore.Key.myTests,
-    OnboardingView.doneKey,
+    OnboardingView.doneKey, AppPreferences.formatKey,
   ]
 
-  static func reset(_ defaults: UserDefaults, domain: String) {
-    for key in (defaults.persistentDomain(forName: domain) ?? [:]).keys where !kept.contains(key) {
-      defaults.removeObject(forKey: key)
+  static func reset(_ defaults: UserDefaults, domain: String) throws {
+    try AppPreferences.checkedWrite(in: defaults, domain: domain) {
+      for key in (defaults.persistentDomain(forName: domain) ?? [:]).keys where !kept.contains(key) {
+        defaults.removeObject(forKey: key)
+      }
     }
   }
 }

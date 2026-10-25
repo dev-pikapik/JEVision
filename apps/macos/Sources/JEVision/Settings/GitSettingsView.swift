@@ -8,7 +8,7 @@ struct GitSettingsView: View {
   @State private var isNamingBranch = false
   @State private var branchName = ""
   @State private var isComposing = false
-  @AppStorage(ProjectGit.gitHubClientIDKey) private var clientID = ""
+  @AppPreference(ProjectGit.gitHubClientIDKey) private var clientID = ""
 
   private var git: ProjectGit { project.git }
 

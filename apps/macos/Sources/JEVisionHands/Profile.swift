@@ -70,6 +70,18 @@ public final class Profile: @unchecked Sendable {
         bundleIdentifier == AISettings.appDomain ? .standard : UserDefaults(suiteName: AISettings.appDomain) ?? .standard
       appDefaultsDomain = AISettings.appDomain
     }
+    let backups = supportFolder.appending(path: "Preferences Backups", directoryHint: .isDirectory)
+    if !defaultsDomain.isEmpty {
+      AppPreferences.register(defaults, domain: defaultsDomain,
+        file: Self.preferencesFile(domain: defaultsDomain), backups: backups)
+    }
+    AppPreferences.register(appDefaults, domain: appDefaultsDomain,
+      file: Self.preferencesFile(domain: appDefaultsDomain), backups: backups)
+  }
+
+  private static func preferencesFile(domain: String) -> URL {
+    if domain.hasPrefix("/") { return URL(filePath: domain + ".plist") }
+    return FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Preferences/" + domain + ".plist")
   }
 
   /// The Keychain service that stands for `service` here: a profile keeps its keys apart from the

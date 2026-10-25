@@ -127,6 +127,7 @@ final class OptionalPermissions {
 
   /// Asks macOS; once it was refused the answer is only in System Settings.
   func allow(_ permission: OptionalPermission) {
+    guard AppPreferences.write(in: defaults, {}) else { return }
     switch permission {
     case .notifications:
       guard ScheduleNotifier.canNotify else { return }
@@ -134,7 +135,7 @@ final class OptionalPermissions {
         Task { @MainActor in self.refresh() }
       }
     case .localNetwork:
-      defaults.set(true, forKey: Self.askedKey)
+      AppPreferences.set(true, forKey: Self.askedKey, in: defaults)
       probeLocalNetwork()
     }
   }

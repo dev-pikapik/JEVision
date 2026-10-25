@@ -61,19 +61,19 @@ final class RemoteAccess {
   var isEnabled: Bool {
     didSet {
       guard isEnabled != oldValue else { return }
-      defaults.set(isEnabled, forKey: Key.enabled)
+      guard AppPreferences.set(isEnabled, forKey: Key.enabled, in: defaults) else { isEnabled = oldValue; return }
       if isEnabled { turnOn() } else { turnOff() }
     }
   }
   var confirmsRuns: Bool {
     didSet {
-      defaults.set(confirmsRuns, forKey: Key.confirmRuns)
+      guard AppPreferences.set(confirmsRuns, forKey: Key.confirmRuns, in: defaults) else { confirmsRuns = oldValue; return }
       host?.setConfirmRuns(confirm: confirmsRuns)
     }
   }
   var keepsAwake: Bool {
     didSet {
-      defaults.set(keepsAwake, forKey: Key.keepAwake)
+      guard AppPreferences.set(keepsAwake, forKey: Key.keepAwake, in: defaults) else { keepsAwake = oldValue; return }
       updateSleep()
     }
   }
@@ -191,10 +191,13 @@ final class RemoteAccess {
 
   /// Uses another relay from now on, reconnecting if remote access is on.
   func setRelay(_ choice: RelayChoice, customURL: String) {
+    let url = customURL.trimmingCharacters(in: .whitespaces)
+    guard AppPreferences.write(in: defaults, {
+      defaults.set(choice.rawValue, forKey: Key.relay)
+      defaults.set(url, forKey: Key.customRelay)
+    }) else { return }
     relayChoice = choice
-    customRelay = customURL.trimmingCharacters(in: .whitespaces)
-    defaults.set(choice.rawValue, forKey: Key.relay)
-    defaults.set(customRelay, forKey: Key.customRelay)
+    customRelay = url
     guard isEnabled else { return }
     let showsCode = offer != nil
     turnOff()

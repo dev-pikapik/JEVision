@@ -12,7 +12,7 @@ struct AdvancedSettingsTests {
     defaults.set(true, forKey: OnboardingView.doneKey)
     defaults.set("[]", forKey: ProjectStore.Key.recent)
     defaults.set("/Users/me/Smoke", forKey: ProjectStore.Key.current)
-    SettingsReset.reset(defaults, domain: suite)
+    try SettingsReset.reset(defaults, domain: suite)
     #expect(defaults.object(forKey: "appearance") == nil)
     #expect(defaults.bool(forKey: OnboardingView.doneKey))
     #expect(defaults.string(forKey: ProjectStore.Key.recent) == "[]")

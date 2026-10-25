@@ -55,6 +55,21 @@ struct ScheduleCommandTests {
     #expect(try scheduledRuns(project: project.path).count == 1)
   }
 
+  @Test func incompatiblePreferencesStopBeforeScheduleCheckpointOrReadiness() throws {
+    let project = try scratch()
+    try saveProjectSchedules(project: project.path, schedules: [daily("Nightly", at: 9, 0)])
+    let profile = Profile(folder: try scratch())
+    defer { profile.defaults.removePersistentDomain(forName: profile.defaultsDomain) }
+    profile.defaults.set(99, forKey: AppPreferences.formatKey)
+    profile.defaults.synchronize()
+    var command = ScheduleCommand(project: project.path)
+    command.checkPreferences = { try AppPreferences.check(profile.defaults) }
+    command.blocker = { Issue.record("Readiness was checked before preference compatibility"); return nil }
+    command.runTests = { _ throws(UsageError) in Issue.record("Tests must not start"); return [] }
+    #expect(command.execute() == .needsNewer)
+    #expect(!FileManager.default.fileExists(atPath: project.appending(path: ".jevision/schedule-history.json").path))
+  }
+
   @Test func recordsWhyARunCouldNotStart() throws {
     let project = try scratch()
     try saveProjectSchedules(project: project.path, schedules: [daily("Nightly", at: 9, 0)])
@@ -237,6 +252,8 @@ struct ScheduleAgentsTests {
     agents.bundleID = "test.jevision"
     agents.tool = CommandLineTool(tool: tool)
     agents.launchctl = calls.run
+    agents.isAvailable = true
+    agents.checkPreferences = {}
     return agents
   }
 
@@ -261,7 +278,7 @@ struct ScheduleAgentsTests {
     calls.list = []
     try agents.install(project, schedules: [])
     #expect(!FileManager.default.fileExists(atPath: file.path))
-    #expect(calls.list.map(\.first) == ["bootout"])
+    #expect(calls.list.map(\.first) == ["bootout", "print"])
     #expect(agents.projects().isEmpty)
   }
 
@@ -281,6 +298,185 @@ struct ScheduleAgentsTests {
     calls.list = []
     try agents.install(project, schedules: schedules)
     #expect(calls.list.map(\.first) == ["print", "bootout", "print", "bootstrap"])
+  }
+
+  @Test func aJobFileAloneDoesNotMeanLaunchdHasTheJob() throws {
+    let calls = FakeLaunchd()
+    let agents = try agents(in: try scratch(), calls: calls)
+    let project = try scratch()
+    let schedules = [daily("Nightly", at: 3, 0)]
+    try agents.install(project, schedules: schedules)
+    try calls.run(["bootout", "gui/\(getuid())/\(agents.label(for: project))"])
+    calls.list = []
+    #expect(agents.state(of: project, schedules: schedules) == (true, false))
+    #expect(calls.list.map(\.first) == ["print"])
+    #expect(FileManager.default.fileExists(atPath: agents.file(for: project).path))
+  }
+
+  @Test func startupReconciliationKeepsTheLiveJobAndRestoresOnlyPreviouslyEnabledProjects() throws {
+    let calls = FakeLaunchd()
+    let agents = try agents(in: try scratch(), calls: calls)
+    let project = try scratch()
+    let disabled = try scratch()
+    let schedules = [daily("Nightly", at: 3, 0)]
+    for folder in [project, disabled] { try saveProjectSchedules(project: folder.path, schedules: schedules) }
+    try agents.install(project, schedules: schedules)
+    calls.list = []
+    #expect(agents.reconcile().isEmpty)
+    #expect(calls.list.map(\.first) == ["print"], "an active unchanged run is never stopped")
+    #expect(!FileManager.default.fileExists(atPath: agents.file(for: disabled).path))
+
+    try calls.run(["bootout", "gui/\(getuid())/\(agents.label(for: project))"])
+    calls.list = []
+    #expect(agents.reconcile().isEmpty)
+    #expect(calls.list.map(\.first) == ["print", "bootout", "print", "bootstrap"])
+    #expect(agents.state(of: project, schedules: schedules) == (true, true))
+    #expect(!FileManager.default.fileExists(atPath: agents.file(for: disabled).path))
+  }
+
+  @Test func startupReconciliationUpdatesTheToolPathAfterMovingTheApp() throws {
+    let calls = FakeLaunchd()
+    let original = try agents(in: try scratch(), calls: calls)
+    let project = try scratch()
+    let schedules = [daily("Nightly", at: 3, 0)]
+    try saveProjectSchedules(project: project.path, schedules: schedules)
+    try original.install(project, schedules: schedules)
+    let movedTool = try scratch().appending(path: "jevision")
+    try "#!/bin/sh\n".write(to: movedTool, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: movedTool.path)
+    var moved = original
+    moved.tool = CommandLineTool(tool: movedTool)
+    calls.list = []
+
+    #expect(moved.reconcile().isEmpty)
+    #expect(calls.list.map(\.first) == ["bootout", "print", "bootstrap"])
+    #expect(moved.state(of: project, schedules: schedules) == (true, true))
+    #expect(original.state(of: project, schedules: schedules) == (true, false))
+  }
+
+  @Test func filesWithAnotherIdentityOrCommandAreNeverAdoptedOrReplaced() throws {
+    let mutations: [(inout [String: Any], String) -> Void] = [
+      { plist, _ in plist["Label"] = "test.jevision.schedule.another" },
+      { plist, _ in plist["AssociatedBundleIdentifiers"] = ["another.app"] },
+      { plist, path in plist["ProgramArguments"] = ["/bin/echo", "schedule", "run", path] },
+      { plist, path in plist["ProgramArguments"] = ["jevision", "schedule", "run", path] },
+      { plist, path in plist["ProgramArguments"] = ["/tmp/jevision", "run", "schedule", path] },
+      { plist, _ in plist["ProgramArguments"] = ["/tmp/jevision", "schedule", "run", "/another/project"] },
+      { plist, path in plist["ProgramArguments"] = ["/tmp/jevision", "schedule", "run", path + "/../other"] },
+    ]
+    for mutate in mutations {
+      let calls = FakeLaunchd()
+      let agents = try agents(in: try scratch(), calls: calls)
+      let project = try scratch()
+      let schedules = [daily("Nightly", at: 3, 0)]
+      try agents.install(project, schedules: schedules)
+      let file = agents.file(for: project)
+      var plist = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: file), format: nil) as? [String: Any])
+      mutate(&plist, project.path)
+      let bytes = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+      try bytes.write(to: file)
+      calls.list = []
+
+      #expect(agents.projects().isEmpty)
+      #expect(agents.reconcile().isEmpty)
+      #expect(agents.state(of: project, schedules: schedules) == (false, false))
+      #expect(throws: CocoaError.self) { try agents.install(project, schedules: schedules) }
+      #expect(throws: CocoaError.self) { try agents.remove(project) }
+      #expect(calls.list.isEmpty)
+      #expect(try Data(contentsOf: file) == bytes)
+    }
+  }
+
+  @Test func anotherFilenameOrASymlinkIsNotARecordOfConsent() throws {
+    let calls = FakeLaunchd()
+    let agents = try agents(in: try scratch(), calls: calls)
+    let project = try scratch()
+    let schedules = [daily("Nightly", at: 3, 0)]
+    try agents.install(project, schedules: schedules)
+    let file = agents.file(for: project)
+    let renamed = file.deletingLastPathComponent().appending(path: "test.jevision.schedule.another.plist")
+    try FileManager.default.moveItem(at: file, to: renamed)
+    calls.list = []
+    #expect(agents.projects().isEmpty)
+    #expect(agents.reconcile().isEmpty)
+    let bytes = try Data(contentsOf: renamed)
+    try FileManager.default.createSymbolicLink(at: file, withDestinationURL: renamed)
+    #expect(agents.projects().isEmpty)
+    #expect(agents.reconcile().isEmpty)
+    #expect(throws: CocoaError.self) { try agents.install(project, schedules: schedules) }
+    #expect(throws: CocoaError.self) { try agents.remove(project) }
+    #expect(try Data(contentsOf: renamed) == bytes)
+    #expect((try file.resourceValues(forKeys: [.isSymbolicLinkKey])).isSymbolicLink == true)
+    #expect(calls.list.isEmpty)
+  }
+
+  @Test func unreadableRequirementsOrHistoryKeepThePreviouslyEnabledJobIntact() throws {
+    for history in [false, true] {
+      for text in ["{", #"{"format":99,"schedules":false,"runs":false}"#] {
+        let calls = FakeLaunchd()
+        let agents = try agents(in: try scratch(), calls: calls)
+        let project = try scratch()
+        let schedules = [daily("Nightly", at: 3, 0)]
+        try saveProjectSchedules(project: project.path, schedules: schedules)
+        try agents.install(project, schedules: schedules)
+        let file = agents.file(for: project)
+        let bytes = try Data(contentsOf: file)
+        let changed = history ? project.appending(path: ".jevision/schedule-history.json") : project.appending(path: scheduleFileName())
+        try FileManager.default.createDirectory(at: changed.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try text.write(to: changed, atomically: true, encoding: .utf8)
+        calls.list = []
+
+        #expect(agents.reconcile().map(\.project) == [ScheduleAgents.path(project)])
+        #expect(calls.list.isEmpty)
+        #expect(try Data(contentsOf: file) == bytes)
+        #expect(try String(contentsOf: changed, encoding: .utf8) == text)
+      }
+    }
+  }
+
+  @Test func aMissingProjectDoesNotStopReconciliationOfTheOthers() throws {
+    let calls = FakeLaunchd()
+    let agents = try agents(in: try scratch(), calls: calls)
+    let missing = try scratch()
+    let available = try scratch()
+    let schedules = [daily("Nightly", at: 3, 0)]
+    for project in [missing, available] {
+      try saveProjectSchedules(project: project.path, schedules: schedules)
+      try agents.install(project, schedules: schedules)
+    }
+    let missingFile = agents.file(for: missing)
+    let missingPath = ScheduleAgents.path(missing)
+    let preserved = try Data(contentsOf: missingFile)
+    try FileManager.default.removeItem(at: missing)
+    try calls.run(["bootout", "gui/\(getuid())/\(agents.label(for: available))"])
+    calls.list = []
+    #expect(agents.reconcile().map(\.project) == [missingPath])
+    #expect(try Data(contentsOf: missingFile) == preserved)
+    #expect(calls.list.filter { $0.first == "bootstrap" }.count == 1)
+    #expect(agents.state(of: available, schedules: schedules) == (true, true))
+  }
+
+  @Test func newerPreferencesRefuseReconciliationAndEveryAgentMutation() throws {
+    let calls = FakeLaunchd()
+    var agents = try agents(in: try scratch(), calls: calls)
+    let project = try scratch()
+    let schedules = [daily("Nightly", at: 3, 0)]
+    try saveProjectSchedules(project: project.path, schedules: schedules)
+    try agents.install(project, schedules: schedules)
+    let file = agents.file(for: project)
+    let bytes = try Data(contentsOf: file)
+    let profile = Profile(folder: try scratch())
+    defer { profile.defaults.removePersistentDomain(forName: profile.defaultsDomain) }
+    profile.defaults.set(99, forKey: AppPreferences.formatKey)
+    profile.defaults.synchronize()
+    agents.checkPreferences = { try AppPreferences.check(profile.defaults) }
+    calls.list = []
+    #expect(throws: AppPreferences.Failure.self) { try agents.install(project, schedules: schedules) }
+    #expect(throws: AppPreferences.Failure.self) { try agents.remove(project) }
+    #expect(agents.reconcile().isEmpty)
+    #expect(agents.state(of: project, schedules: schedules) == (false, false))
+    #expect(calls.list.isEmpty)
+    #expect(try Data(contentsOf: file) == bytes)
   }
 
   @Test func replacingTheJobWaitsUntilLaunchdHasTakenTheOldOneOut() throws {
@@ -310,7 +506,28 @@ struct ScheduleAgentsTests {
     }
     #expect(ContinuousClock.now - started < .seconds(5))
     #expect(calls.list.last?.first == "print")
-    #expect(agents.state(of: project, schedules: [daily("Nightly", at: 4, 0)]) == (false, false))
+    #expect(agents.state(of: project, schedules: [daily("Nightly", at: 4, 0)]) == (true, false))
+  }
+
+  @Test func removingAJobWaitsForLaunchdAndPreservesTheFileWhenItCannotStop() throws {
+    let calls = FakeLaunchd()
+    var agents = try agents(in: try scratch(), calls: calls)
+    agents.patience = .milliseconds(100)
+    let project = try scratch()
+    try agents.install(project, schedules: [daily("Nightly", at: 3, 0)])
+    let file = agents.file(for: project)
+    let bytes = try Data(contentsOf: file)
+    calls.lingers = .max
+    calls.list = []
+    #expect(throws: ScheduleAgents.Failure.self) { try agents.remove(project) }
+    #expect(calls.list.first?.first == "bootout")
+    #expect(calls.list.last?.first == "print")
+    #expect(try Data(contentsOf: file) == bytes)
+    calls.lingers = 0
+    calls.list = []
+    try agents.remove(project)
+    #expect(calls.list.map(\.first) == ["bootout", "print"])
+    #expect(!FileManager.default.fileExists(atPath: file.path))
   }
 
   @Test func refusesWithoutTheTool() throws {
@@ -333,6 +550,7 @@ struct ScheduleAgentsTests {
     agents.isAvailable = false
     #expect(agents.state(of: project, schedules: schedules) == (false, false))
     #expect(agents.projects().isEmpty)
+    #expect(agents.reconcile().isEmpty)
     #expect(throws: (any Error).self) { try agents.install(project, schedules: [daily("Early", at: 5, 0)]) }
     try agents.remove(project)
     #expect(calls.list.isEmpty)
@@ -393,6 +611,8 @@ struct ScheduleUndoTests {
     agents.tool = CommandLineTool(tool: tool)
     agents.launchctl = launchd.run
     agents.patience = patience
+    agents.isAvailable = true
+    agents.checkPreferences = {}
     let suite = "jevision-schedule-undo-\(UUID().uuidString)"
     let schedules = ProjectSchedules(agents: agents, defaults: try #require(UserDefaults(suiteName: suite)))
     schedules.open(project)
@@ -505,7 +725,7 @@ struct ScheduleUndoTests {
     try await settled(schedules)
     undo.redo()
     try await settled(schedules)
-    #expect(launchd.list.map(\.first) == ["print"])
+    #expect(launchd.list.map(\.first) == ["print", "print", "print"])
     #expect(schedules.all.map(\.environment) == ["Staging"])
     #expect(schedules.isOn)
   }
@@ -532,6 +752,57 @@ struct ScheduleUndoTests {
     #expect(schedules.isOn)
   }
 
+  @Test func reloadRechecksLaunchdAndRestoresAPreviouslyEnabledJobOffTheMainThread() async throws {
+    let project = try scratch()
+    let launchd = FakeLaunchd()
+    let (schedules, agents) = try schedules(project, launchd: launchd)
+    try await schedules.save([daily("Nightly", at: 3, 0)], action: "Add Schedule", undoManager: nil).value
+    try launchd.run(["bootout", "gui/\(getuid())/\(agents.label(for: project))"])
+    launchd.list = []
+    launchd.ranOnMain = false
+
+    schedules.reload()
+    try await settled(schedules)
+    #expect(schedules.isOn)
+    #expect(launchd.list.map(\.first) == ["print", "bootout", "print", "bootstrap"])
+    #expect(!launchd.ranOnMain)
+
+    launchd.list = []
+    schedules.reload()
+    try await settled(schedules)
+    #expect(schedules.isOn)
+    #expect(launchd.list.map(\.first) == ["print"])
+  }
+
+  @Test func openingAProjectWithSchedulesDoesNotEnableItOnThisMac() throws {
+    let project = try scratch()
+    let launchd = FakeLaunchd()
+    try saveProjectSchedules(project: project.path, schedules: [daily("Nightly", at: 3, 0)])
+    let (schedules, agents) = try schedules(project, launchd: launchd)
+    schedules.reload()
+    #expect(!schedules.isOn)
+    #expect(!schedules.isChanging)
+    #expect(launchd.list.isEmpty)
+    #expect(!FileManager.default.fileExists(atPath: agents.file(for: project).path))
+  }
+
+  @Test func finishingAnotherProjectsChangeDoesNotMarkTheNewProjectAsEnabled() async throws {
+    let original = try scratch()
+    let other = try scratch()
+    let launchd = FakeLaunchd()
+    let (schedules, agents) = try schedules(original, launchd: launchd)
+    try await schedules.save([daily("Nightly", at: 3, 0)], action: "Add Schedule", undoManager: nil).value
+    let changed = [daily("Nightly", at: 4, 0)]
+    try saveProjectSchedules(project: other.path, schedules: changed)
+    let saving = try schedules.save(changed, action: "Edit Schedule", undoManager: nil)
+    schedules.open(other)
+    try await saving.value
+    try await settled(schedules)
+    #expect(schedules.all == changed)
+    #expect(!schedules.isOn)
+    #expect(!FileManager.default.fileExists(atPath: agents.file(for: other).path))
+  }
+
   @Test func savedSchedulesStaySavedWhenMacOSDoesNotTakeThem() async throws {
     let project = try scratch()
     let launchd = FakeLaunchd()
@@ -554,7 +825,7 @@ struct ScheduleUndoTests {
     #expect(schedules.isOn)
   }
 
-  @Test func aSaveThatFailedIsNotRetriedOnItsOwn() async throws {
+  @Test func aSaveThatFailedPreservesThePreviousJobWithoutRetryingItself() async throws {
     let project = try scratch()
     let launchd = FakeLaunchd()
     let (schedules, agents) = try schedules(project, launchd: launchd, patience: .milliseconds(200))
@@ -565,12 +836,30 @@ struct ScheduleUndoTests {
     let turningOn = try save([daily("Nightly", at: 4, 0)], in: schedules, "Edit Schedule", undo)
     try await settled(schedules)
     await #expect(throws: ScheduleAgents.Failure.self) { try await turningOn.value }
-    #expect(!FileManager.default.fileExists(atPath: agents.file(for: project).path))
+    let previous = try #require(try agents.agent(for: project, schedules: [daily("Nightly", at: 3, 0)]))
+    #expect(try String(contentsOf: agents.file(for: project), encoding: .utf8) == previous.plist)
     launchd.list = []
-    schedules.reload()
+    try await Task.sleep(for: .milliseconds(50))
     #expect(!schedules.isChanging)
-    #expect(launchd.list.isEmpty)
+    #expect(launchd.list.isEmpty, "a failed change never retries itself")
     #expect(!schedules.isOn)
+    launchd.lingers = 0
+    schedules.reload()
+    try await settled(schedules)
+    #expect(schedules.isOn, "an explicit refresh can recover after macOS is ready")
+  }
+
+  @Test func failureToStopTheLastScheduleIsReportedRatherThanPretendingItStopped() async throws {
+    let project = try scratch()
+    let launchd = FakeLaunchd()
+    let (schedules, agents) = try schedules(project, launchd: launchd, patience: .milliseconds(100))
+    try await schedules.save([daily("Nightly", at: 3, 0)], action: "Add Schedule", undoManager: nil).value
+    launchd.lingers = .max
+    let clearing = try schedules.save([], action: "Delete Schedule", undoManager: nil)
+    await #expect(throws: ScheduleAgents.Failure.self) { try await clearing.value }
+    #expect(schedules.all.isEmpty)
+    #expect(!schedules.isOn)
+    #expect(FileManager.default.fileExists(atPath: agents.file(for: project).path))
   }
 
   @Test func savingSaysItFailedOnlyWhenTheSchedulesEndUpNotRunning() async throws {

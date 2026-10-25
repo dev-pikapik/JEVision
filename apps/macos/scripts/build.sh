@@ -25,7 +25,7 @@ ROOT=../..
 CORE=$ROOT/build/apple/JEVisionCore
 FFI=$CORE/JEVisionCoreFFI.xcframework/macos-arm64_x86_64
 STAMP=$CORE/.build-stamp
-if [ ! -f "$STAMP" ] || [ "$(cat "$CORE/.build-profile" 2>/dev/null || true)" != "${PROFILE:-release}" ] || [ -n "$(find "$ROOT/crates" "$ROOT/Cargo.toml" "$ROOT/Cargo.lock" -newer "$STAMP" -print -quit)" ]; then
+if [ ! -f "$STAMP" ] || [ "$(cat "$CORE/.build-profile" 2>/dev/null || true)" != "${PROFILE:-release}" ] || [ -n "$(find "$ROOT/crates" "$ROOT/Cargo.toml" "$ROOT/Cargo.lock" "$ROOT/apps/macos/Resources/Localizable.xcstrings" -newer "$STAMP" -print -quit)" ]; then
   "$ROOT/scripts/build-core-apple.sh"
 fi
 

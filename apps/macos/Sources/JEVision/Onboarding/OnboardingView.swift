@@ -18,8 +18,8 @@ struct OnboardingView: View {
     }
   }
 
-  @AppStorage(doneKey) private var done = false
-  @AppStorage(AISettings.providerKey) private var aiProvider = ""
+  @AppPreference(doneKey) private var done = false
+  @AppPreference(AISettings.providerKey) private var aiProvider = ""
   @Environment(PermissionsMonitor.self) private var monitor
   @Environment(ProjectStore.self) private var project
   @Environment(RecordCenter.self) private var records

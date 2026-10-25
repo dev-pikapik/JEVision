@@ -102,7 +102,7 @@ enum FileLabels {
   }
 
   static func setKeepsPlainPaths(_ keeps: Bool, in project: URL) {
-    if keeps { Profile.current.defaults.set(true, forKey: key(project)) } else { Profile.current.defaults.removeObject(forKey: key(project)) }
+    if keeps { AppPreferences.set(true, forKey: key(project), in: Profile.current.defaults) } else { AppPreferences.removeObject(forKey: key(project), in: Profile.current.defaults) }
   }
 
   /// What a test in `folder` writes for `file`, chosen in Finder: its label, made when it has

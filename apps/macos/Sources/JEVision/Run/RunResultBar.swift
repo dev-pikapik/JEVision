@@ -28,14 +28,14 @@ struct RunResultBar: View {
         Spacer(minLength: 12)
         if result.permission != nil {
           Button("Open Permissions") {
-            Profile.current.defaults.set(SettingsTab.permissions.rawValue, forKey: SettingsTab.key)
+            AppPreferences.set(SettingsTab.permissions.rawValue, forKey: SettingsTab.key, in: Profile.current.defaults)
             openSettings()
           }
           .buttonStyle(.glassProminent)
         }
         if result.needsAISetup {
           Button("Open AI Settings") {
-            Profile.current.defaults.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+            AppPreferences.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key, in: Profile.current.defaults)
             openSettings()
           }
           .buttonStyle(.glassProminent)
@@ -70,7 +70,7 @@ struct RunResultBar: View {
           .fixedSize(horizontal: false, vertical: true)
           Spacer(minLength: 12)
           Button("Notification Settings") {
-            Profile.current.defaults.set(SettingsTab.notifications.rawValue, forKey: SettingsTab.key)
+            AppPreferences.set(SettingsTab.notifications.rawValue, forKey: SettingsTab.key, in: Profile.current.defaults)
             openSettings()
           }
           .buttonStyle(.glass)

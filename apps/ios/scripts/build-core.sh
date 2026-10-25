@@ -23,7 +23,7 @@ fi
 
 if [ -f "$STAMP" ] && [ -f "$SWIFT" ] && [ "$(cat "$ROOT/apps/ios/Frameworks/.build-profile" 2>/dev/null || true)" = "$PROFILE" ]; then
   # Every local crate the library is made of, plus the workspace manifest and lock file.
-  SOURCES=("$ROOT/Cargo.toml" "$ROOT/Cargo.lock")
+  SOURCES=("$ROOT/Cargo.toml" "$ROOT/Cargo.lock" "$ROOT/apps/macos/Resources/Localizable.xcstrings")
   while IFS= read -r dir; do SOURCES+=("$dir"); done < <(
     cd "$ROOT" && cargo tree --locked -q -p jevision-mobile -e normal,build --prefix none \
       | sed -n 's/^[^ ]* v[^ ]* (\(\/[^)]*\)).*/\1/p' | sort -u)

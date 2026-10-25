@@ -5,12 +5,12 @@ import SwiftUI
 /// Settings → AI: the model that checks screens by meaning, and JEV, which finds the elements
 /// tests describe in words.
 struct AISettingsView: View {
-  @AppStorage(AISettings.providerKey) private var providerID = ""
-  @AppStorage(AISettings.localOnlyKey) private var localOnly = false
-  @AppStorage(AISettings.fallbackKey) private var fallbackID = ""
-  @AppStorage(AISettings.assistantsRunKey) private var mayRun = false
-  @AppStorage(AISettings.assistantsCaptureKey) private var mayCapture = false
-  @AppStorage(AISettings.assistantsAskFirstKey) private var askFirst = true
+  @AppPreference(AISettings.providerKey) private var providerID = ""
+  @AppPreference(AISettings.localOnlyKey) private var localOnly = false
+  @AppPreference(AISettings.fallbackKey) private var fallbackID = ""
+  @AppPreference(AISettings.assistantsRunKey) private var mayRun = false
+  @AppPreference(AISettings.assistantsCaptureKey) private var mayCapture = false
+  @AppPreference(AISettings.assistantsAskFirstKey) private var askFirst = true
 
   var body: some View {
     Form {
@@ -52,14 +52,14 @@ struct AISettingsView: View {
     mayRun = false
     mayCapture = false
     askFirst = true
-    Self.providerKeys.forEach(Profile.current.defaults.removeObject(forKey:))
+    Self.providerKeys.forEach { AppPreferences.removeObject(forKey: $0, in: Profile.current.defaults) }
   }
 }
 
 /// The provider and whether screenshots may leave this Mac.
 struct AISections: View {
-  @AppStorage(AISettings.providerKey) private var providerID = ""
-  @AppStorage(AISettings.localOnlyKey) private var localOnly = false
+  @AppPreference(AISettings.providerKey) private var providerID = ""
+  @AppPreference(AISettings.localOnlyKey) private var localOnly = false
   private let providers = AISettings.providers
 
   var body: some View {
@@ -94,9 +94,9 @@ struct AISections: View {
 /// The JEV route that finds the elements tests describe in words, while a provider that can't
 /// find them checks by meaning.
 private struct FinderSections: View {
-  @AppStorage(AISettings.providerKey) private var providerID = ""
-  @AppStorage(AISettings.finderKey) private var finderID = ""
-  @AppStorage(AISettings.localOnlyKey) private var localOnly = false
+  @AppPreference(AISettings.providerKey) private var providerID = ""
+  @AppPreference(AISettings.finderKey) private var finderID = ""
+  @AppPreference(AISettings.localOnlyKey) private var localOnly = false
   private let finders = AISettings.providers.filter(\.findsElements)
 
   var body: some View {
@@ -117,9 +117,9 @@ private struct FinderSections: View {
 
 /// The provider asked when the main one can't answer, with its own model and key.
 private struct FallbackSections: View {
-  @AppStorage(AISettings.providerKey) private var providerID = ""
-  @AppStorage(AISettings.fallbackKey) private var fallbackID = ""
-  @AppStorage(AISettings.localOnlyKey) private var localOnly = false
+  @AppPreference(AISettings.providerKey) private var providerID = ""
+  @AppPreference(AISettings.fallbackKey) private var fallbackID = ""
+  @AppPreference(AISettings.localOnlyKey) private var localOnly = false
   private let providers = AISettings.providers
 
   var body: some View {
@@ -152,10 +152,10 @@ struct ProviderSection: View {
   let localOnly: Bool
   /// Shown for finding elements by description only, while another provider checks by meaning.
   var findsOnly = false
-  @AppStorage private var model: String
-  @AppStorage private var address: String
-  @AppStorage private var pictures: Bool
-  @AppStorage private var account: String
+  @AppPreference private var model: String
+  @AppPreference private var address: String
+  @AppPreference private var pictures: Bool
+  @AppPreference private var account: String
   @State private var models: [String] = []
   @State private var listing = Listing.idle
   @State private var test = Test.idle
@@ -175,10 +175,10 @@ struct ProviderSection: View {
     self.provider = provider
     self.localOnly = localOnly
     self.findsOnly = findsOnly
-    _model = AppStorage(wrappedValue: provider.defaultModel, AISettings.modelKey(provider.id))
-    _address = AppStorage(wrappedValue: "", AISettings.addressKey(provider.id))
-    _pictures = AppStorage(wrappedValue: true, AISettings.picturesKey(provider.id))
-    _account = AppStorage(wrappedValue: "", AISettings.accountKey(provider.id))
+    _model = AppPreference(wrappedValue: provider.defaultModel, AISettings.modelKey(provider.id))
+    _address = AppPreference(wrappedValue: "", AISettings.addressKey(provider.id))
+    _pictures = AppPreference(wrappedValue: true, AISettings.picturesKey(provider.id))
+    _account = AppPreference(wrappedValue: "", AISettings.accountKey(provider.id))
   }
 
   /// Read when needed, not on every redraw: the key comes from the Keychain.

@@ -447,7 +447,7 @@ struct ReferenceEditor: View {
   @Binding var reference: Reference
   let field: String
   let context: FieldContext
-  @AppStorage(AISettings.providerKey) private var aiProvider = ""
+  @AppPreference(AISettings.providerKey) private var aiProvider = ""
   @Environment(\.openSettings) private var openSettings
   @State private var isEditing = false
   @State private var picture: ReferencePicture?
@@ -599,7 +599,7 @@ struct ReferenceEditor: View {
           .fixedSize(horizontal: false, vertical: true)
         Spacer(minLength: 4)
         Button("Set Up AI…") {
-          Profile.current.defaults.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+          AppPreferences.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key, in: Profile.current.defaults)
           openSettings()
         }
         .buttonStyle(.link)
@@ -713,7 +713,7 @@ struct TargetEditor: View {
         if !finderReady {
           Spacer(minLength: 4)
           Button("Set Up JEV…") {
-            Profile.current.defaults.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+            AppPreferences.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key, in: Profile.current.defaults)
             openSettings()
           }
           .buttonStyle(.link)

@@ -162,7 +162,7 @@ public struct AISettings {
     let rows: [[String: Any]] = prices.map {
       ["provider": $0.provider, "model": $0.model, "input": $0.input, "output": $0.output]
     }
-    defaults.set(rows, forKey: pricesKey)
+    AppPreferences.set(rows, forKey: pricesKey, in: defaults)
   }
 
   /// Spending limits in US dollars, for the providers that have one.

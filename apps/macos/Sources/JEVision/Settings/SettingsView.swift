@@ -4,7 +4,7 @@ import SwiftUI
 
 struct SettingsView: View {
   @Environment(PermissionsMonitor.self) private var monitor
-  @AppStorage(SettingsTab.key) private var stored = SettingsTab.general
+  @AppPreference(SettingsTab.key) private var stored = SettingsTab.general
   @State private var model = SettingsModel(selection: SettingsTab.saved)
 
   var body: some View {

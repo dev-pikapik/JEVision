@@ -35,7 +35,7 @@ enum MCPServers {
   }
 
   static func save(_ entries: [MCPServerEntry], to defaults: UserDefaults = Profile.current.defaults) {
-    defaults.set(try? JSONEncoder().encode(entries), forKey: key)
+    AppPreferences.set(try? JSONEncoder().encode(entries), forKey: key, in: defaults)
   }
 
   /// The servers the AI may use now.

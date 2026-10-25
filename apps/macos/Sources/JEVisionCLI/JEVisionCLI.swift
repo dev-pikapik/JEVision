@@ -26,6 +26,18 @@ enum JEVisionCLI {
       Console.standardError.line(words("cli.help.more", more))
       return error.status.rawValue
     }
+    if command.usesAppPreferences {
+      do { try AppPreferences.checkApp() }
+      catch let failure as AppPreferences.Failure {
+        Console.standardError.line("jevision: \(failure.localizedDescription)")
+        if arguments.contains("--json") {
+          Console.standardOutput.line(JSON.result([("error", .object([
+            ("code", .string(failure.code)), ("message", .string(failure.localizedDescription)),
+          ]))]).pretty)
+        }
+        return failure.status
+      } catch { return ExitStatus.io.rawValue }
+    }
     if case .run(let request) = command, request.throughApp {
       let app: URL
       do {
@@ -82,6 +94,7 @@ enum JEVisionCLI {
       ("cliBridgeProtocol", .object([
         ("oldest", .int(Int64(CLIBridge.version))), ("newest", .int(Int64(CLIBridge.version))),
       ])),
+      ("preferencesFormat", .int(Int64(AppPreferences.format))),
       ("mcpProtocols", .array(about.mcpProtocols.map { .string($0) })),
     ])
   }
@@ -183,6 +196,13 @@ enum Command: Equatable {
   case issue(IssueRequest)
   case blocks(BlocksRequest)
   case migrate(MigrateRequest)
+
+  var usesAppPreferences: Bool {
+    switch self {
+    case .run, .scheduleRun, .mcp: true
+    default: false
+    }
+  }
 
   static func parse(_ arguments: [String]) throws(UsageError) -> Command {
     guard let name = arguments.first else { return .help(nil) }

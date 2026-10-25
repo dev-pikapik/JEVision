@@ -31,6 +31,6 @@ let package = Package(
       dependencies: ["JEVisionHands", .product(name: "JEVisionCore", package: "JEVisionCore")],
       path: "Sources/JEVisionCLI"),
     .testTarget(
-      name: "JEVisionTests", dependencies: ["JEVision", "JEVisionHands", "JEVisionCLI"], path: "Tests/JEVisionTests"),
+      name: "JEVisionTests", dependencies: ["JEVision", "JEVisionHands", "JEVisionCLI"], path: "Tests/JEVisionTests", resources: [.copy("Fixtures")]),
   ]
 )

@@ -13,8 +13,8 @@ enum AIMoney {
 
 /// Settings → AI: what the AI checks have cost, the limits that stop them and the prices used.
 struct AIUsageSections: View {
-  @AppStorage(AISettings.providerKey) private var providerID = ""
-  @AppStorage(AISettings.fallbackKey) private var fallbackID = ""
+  @AppPreference(AISettings.providerKey) private var providerID = ""
+  @AppPreference(AISettings.fallbackKey) private var fallbackID = ""
   @State private var prices = AISettings.app.prices
   @State private var summary: UsageSummary?
   @State private var failure: String?
@@ -174,14 +174,14 @@ struct AIUsageSections: View {
 private struct LimitRows: View {
   let provider: VisionProvider
   let changed: () -> Void
-  @AppStorage private var daily: Double?
-  @AppStorage private var monthly: Double?
+  @AppPreference private var daily: Double?
+  @AppPreference private var monthly: Double?
 
   init(provider: VisionProvider, changed: @escaping () -> Void) {
     self.provider = provider
     self.changed = changed
-    _daily = AppStorage(AISettings.dailyLimitKey(provider.id))
-    _monthly = AppStorage(AISettings.monthlyLimitKey(provider.id))
+    _daily = AppPreference(AISettings.dailyLimitKey(provider.id))
+    _monthly = AppPreference(AISettings.monthlyLimitKey(provider.id))
   }
 
   var body: some View {

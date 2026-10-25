@@ -59,7 +59,7 @@
 </nav>
 <main id="main" tabindex="-1">
 <h1>File formats</h1>
-<p class="lead">Everything JEVision keeps is plain text or ordinary images in your project folder, so you can read it, review it in git and edit it by hand.</p>
+<p class="lead">Project files are plain text or ordinary images, so you can read them, review them in git and edit them by hand.</p>
 
 <nav class="on-this-page" aria-labelledby="otp">
   <h2 id="otp">On this page</h2>
@@ -79,6 +79,7 @@
     <li><a href="#schedule-history">Schedule history</a></li>
     <li><a href="#last-results">Last results</a></li>
     <li><a href="#versions">Format versions and compatibility</a></li>
+    <li><a href="#preferences">App preferences</a></li>
     <li><a href="#cli-bridge">CLI-to-app bridge</a></li>
     <li><a href="#schemas">JSON Schemas</a></li>
   </ul>
@@ -347,6 +348,11 @@
 <p><code>jevision migrate --dry-run</code> shows what moving the project to the newest format would change, and writes nothing: each test, custom block and template that names a file of the project by its path, the label that each path would become, the <code>.jevmeta</code> files that would be made, and the files that can't be read. <code>jevision migrate</code> makes the change. It backs up all the files it changes into one backup first, then writes each file whole, so a file is never left half-written. Files that can't be read are listed and left as they are.</p>
 <p><code>block.json</code> of a package has a <code>"format"</code> of its own, at <code>1</code>. A newer format or <code>minVersion</code> requirement refuses installation and execution before the manifest or steps are decoded. The diagnostic asks for an update even if the newer payload uses unfamiliar fields. Duplicate keys and malformed requirements are rejected; supported manifests still check every executable field strictly.</p>
 <p>New blocks and fields that have a default, such as <code>modifiers</code> and <code>button</code> of a drag, <code>modifiers</code> of a hover or scroll, the <code>area</code> target, the <code>clipboard</code> and <code>dateTime</code> blocks with their <code>image</code>, <code>content</code>, <code>language</code> and <code>timeZone</code>, and the types of script inputs and outputs, don't change the number: every test written before they existed still opens and runs, and a field left at its default isn't written. A JEVision older than the feature reports the new field or block as unknown instead of ignoring it.</p>
+
+<h2 id="preferences">App preferences</h2>
+<p>The Mac app’s preferences are separate from project files: <code>~/Library/Preferences/io.github.dev-pikapik.jevision.plist</code>, or <code>Settings.plist</code> inside a <code>JEVISION_PROFILE</code> folder. The stored key <code>preferences.format</code> is currently the integer <code>1</code>. An absent key is the original, unversioned format. A present key must be a positive integer; a boolean, real number or string is invalid.</p>
+<p>Before the app opens an unversioned domain, it saves a private copy under <code>~/Library/Application Support/JEVision/Preferences Backups/</code> (or <code>Support/Preferences Backups/</code> in a profile), then adds only the version key. If the backup fails, the app leaves settings unchanged. Ordinary changes update individual keys and retain unfamiliar values. Resetting settings retains the format marker.</p>
+<p>An unsupported or unreadable preferences file prevents the app from starting normally. Preference changes and local assistant actions recheck compatibility while the app is running. Commands that need app preferences refuse a newer format with exit status <code>5</code>, or unreadable preferences with <code>3</code>; the command line never migrates preferences. Help, version discovery and project validation remain available for diagnosis. <a href="cli.html#version"><code>jevision version --json</code></a> advertises <code>preferencesFormat</code>.</p>
 
 <h2 id="cli-bridge">CLI-to-app bridge</h2>
 <p><a href="cli.html#through-app"><code>jevision run --through-app</code></a> uses a temporary folder readable only by its owner. It is removed after the handoff ends and is not part of the project. <code>request.json</code> contains <code>format: 1</code>, an <code>arguments</code> array, the working <code>directory</code>, and an <code>environment</code> object. The original request without <code>format</code> is still read as version 1. A present format must be a positive integer; a newer one is refused with exit status <code>5</code> before starting the command, even when the remaining payload is unfamiliar. Optional unfamiliar fields are ignored; the request is never rewritten.</p>

@@ -47,7 +47,7 @@ final class ProjectEnvironments {
     let before = saved[project.path]
     guard before != name else { return }
     saved[project.path] = name
-    defaults.set(saved, forKey: Self.selectionKey)
+    AppPreferences.set(saved, forKey: Self.selectionKey, in: defaults)
     reload()
     undoManager?.registerUndo(withTarget: self) { [weak undoManager] environments in
       MainActor.assumeIsolated { environments.select(before, undoManager: undoManager) }

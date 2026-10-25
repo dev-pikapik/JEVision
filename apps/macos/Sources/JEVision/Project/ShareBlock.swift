@@ -75,8 +75,8 @@ struct ShareBlockSheet: View {
   let entry: LibraryEntry
   let project: URL
   @Environment(\.dismiss) private var dismiss
-  @AppStorage("blockAuthor") private var savedAuthor = ""
-  @AppStorage("blockLicense") private var savedLicense = "MIT"
+  @AppPreference("blockAuthor") private var savedAuthor = ""
+  @AppPreference("blockLicense") private var savedLicense = "MIT"
   @State private var draft: ShareBlockDraft
   @State private var asZip = true
   @State private var result: ExportedBlock?

@@ -3,12 +3,12 @@ import JEVisionHands
 import SwiftUI
 
 struct GeneralSettingsView: View {
-  @AppStorage(Appearance.key) private var appearance = Appearance.system
-  @AppStorage(RunInputSettings.collapsesKey) private var collapses = true
-  @AppStorage(RunInputSettings.pausesOnMouseKey) private var pausesOnMouse = true
-  @AppStorage(RunInputSettings.escapeStopsKey) private var escapeStops = true
-  @AppStorage(GridSnap.key) private var snapsToGrid = true
-  @AppStorage(NoteFiles.largeKey) private var largeNoteFile = NoteFiles.largeDefault
+  @AppPreference(Appearance.key) private var appearance = Appearance.system
+  @AppPreference(RunInputSettings.collapsesKey) private var collapses = true
+  @AppPreference(RunInputSettings.pausesOnMouseKey) private var pausesOnMouse = true
+  @AppPreference(RunInputSettings.escapeStopsKey) private var escapeStops = true
+  @AppPreference(GridSnap.key) private var snapsToGrid = true
+  @AppPreference(NoteFiles.largeKey) private var largeNoteFile = NoteFiles.largeDefault
 
   private var language: Binding<String> {
     Binding(get: { AppLanguage.shared.saved }, set: { AppLanguage.shared.choose($0) })

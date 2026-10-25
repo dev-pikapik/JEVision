@@ -3,10 +3,10 @@ import JEVisionHands
 import SwiftUI
 
 struct AdvancedSettingsView: View {
-  @AppStorage(VideoSettings.modeKey) private var mode = VideoSettings.defaultMode.name
-  @AppStorage(VideoSettings.keepDaysKey) private var keepDays = VideoSettings.defaultKeepDays
-  @AppStorage(AppLog.levelKey) private var logLevel = LogLevel.default.rawValue
-  @AppStorage(CrashReports.enabledKey) private var savesCrashes = false
+  @AppPreference(VideoSettings.modeKey) private var mode = VideoSettings.defaultMode.name
+  @AppPreference(VideoSettings.keepDaysKey) private var keepDays = VideoSettings.defaultKeepDays
+  @AppPreference(AppLog.levelKey) private var logLevel = LogLevel.default.rawValue
+  @AppPreference(CrashReports.enabledKey) private var savesCrashes = false
 
   var body: some View {
     Form {

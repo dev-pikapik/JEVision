@@ -30,16 +30,21 @@ public final class MacAssistantHost: AssistantHost, @unchecked Sendable {
   private let lock = NSLock()
   /// Watches the person's mouse and keyboard while a run goes.
   private var input: InputWatcher?
+  private let defaults: UserDefaults
   private let readiness: @Sendable () -> String?
 
   /// `readiness` says what stands in the way of a run now, in words for the assistant to pass on,
   /// or `nil`; it is asked before every run, and again as the run starts.
-  public init(readiness: @escaping @Sendable () -> String?) {
+  public init(defaults: UserDefaults = Profile.current.appDefaults, readiness: @escaping @Sendable () -> String?) {
+    self.defaults = defaults
     self.readiness = readiness
   }
 
   public func permissions() -> AssistantPermissions {
-    let settings = AISettings.app
+    guard (try? AppPreferences.check(defaults)) != nil else {
+      return AssistantPermissions(runTests: false, screenshots: false, askFirst: true)
+    }
+    let settings = AISettings(defaults)
     settings.refresh()
     return AssistantPermissions(
       runTests: settings.assistantsMayRun, screenshots: settings.assistantsMayCapture,
@@ -51,10 +56,12 @@ public final class MacAssistantHost: AssistantHost, @unchecked Sendable {
   }
 
   public func readinessProblem() -> String? {
-    readiness()
+    do { try AppPreferences.check(defaults) } catch { return error.localizedDescription }
+    return readiness()
   }
 
   public func startRun(run: TestRun) throws -> Hands {
+    try AppPreferences.check(defaults)
     if let problem = readiness() { throw HandsError.Failed(reason: problem) }
     let input = InputWatcher()
     // Esc Esc stops the run right on the watcher's thread.
@@ -82,16 +89,21 @@ public final class MacAssistantHost: AssistantHost, @unchecked Sendable {
   }
 
   public func runOptions() -> RunOptions {
-    let ai = AISettings.app
-    let videos = VideoSettings.app
+    guard (try? AppPreferences.check(defaults)) != nil else {
+      return RunOptions(startAt: nil, retries: nil, vision: nil, localOnly: true, fallback: nil,
+        providers: nil, finder: nil, usage: nil, video: .off, keepVideosDays: nil, language: "en")
+    }
+    let ai = AISettings(defaults)
+    let videos = VideoSettings(defaults)
     return RunOptions(
       startAt: nil, retries: nil, vision: ai.settings(), localOnly: ai.localOnly, fallback: ai.fallback(),
       providers: ai.namedProviders, finder: ai.finderID(), usage: ai.usage, video: videos.mode,
       keepVideosDays: videos.keepDays,
-      language: RunLanguage.app)
+      language: RunLanguage.language(defaults))
   }
 
   public func capture(app: String) throws -> Screenshot {
+    try AppPreferences.check(defaults)
     if MacHands.screenIsLocked { throw HandsError.ScreenLocked }
     return try MacHands(input: InputWatcher(), isCancelled: { false }).capture(app: app)
   }

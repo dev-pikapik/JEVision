@@ -30,7 +30,7 @@ struct FlowCanvas: View {
   let onPan: (CGSize) -> Void
 
   /// The test while something is dragged: drawn, but saved only when the drag ends.
-  @AppStorage(GridSnap.key) private var snapsToGrid = true
+  @AppPreference(GridSnap.key) private var snapsToGrid = true
   @State private var preview: (flow: Flow, layout: FlowLayout)?
   @State private var link: LinkDrag?
   @State private var marquee: CGRect?

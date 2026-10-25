@@ -87,7 +87,7 @@ enum AppLog {
 
   static var level: LogLevel {
     get { Profile.current.defaults.string(forKey: levelKey).flatMap(LogLevel.init) ?? .default }
-    set { Profile.current.defaults.set(newValue.rawValue, forKey: levelKey) }
+    set { AppPreferences.set(newValue.rawValue, forKey: levelKey, in: Profile.current.defaults) }
   }
 
   static func error(_ message: @autoclosure () -> String, _ category: String = "app") {

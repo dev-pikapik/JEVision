@@ -14,6 +14,8 @@ final class ScheduleNotifier {
   private let agents: ScheduleAgents
   private let defaults: UserDefaults
   private var timer: Timer?
+  private var reconciliation: Task<Void, Never>?
+  private(set) var reconciliationFailures: [ScheduleAgents.ReconciliationFailure] = []
 
   init(agents: ScheduleAgents = ScheduleAgents(), defaults: UserDefaults = Profile.current.defaults) {
     self.agents = agents
@@ -21,7 +23,17 @@ final class ScheduleNotifier {
   }
 
   func start() {
-    check()
+    guard timer == nil, AppPreferences.write(in: defaults, {}) else { return }
+    let agents = agents
+    reconciliation = Task { [weak self] in
+      let failures = await Task.detached(priority: .utility) { agents.reconcile() }.value
+      guard let self else { return }
+      reconciliationFailures = failures
+      for failure in failures {
+        AppLog.error("Schedules could not be reconciled for \(failure.project): \(failure.message)", "schedule")
+      }
+      check()
+    }
     timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
       MainActor.assumeIsolated { self?.check() }
     }
@@ -29,6 +41,7 @@ final class ScheduleNotifier {
 
   /// Posts a notification for every new run of a project with schedules that didn't pass.
   func check() {
+    guard AppPreferences.write(in: defaults, {}) else { return }
     for project in agents.projects() {
       for run in Self.unseen(project, defaults: defaults) where !run.passed {
         Self.post(run, project: project)
@@ -39,21 +52,23 @@ final class ScheduleNotifier {
   /// Runs of `project` that weren't looked at yet, oldest first; they count as looked at now.
   /// A project seen for the first time starts with what it has.
   static func unseen(_ project: String, defaults: UserDefaults) -> [ScheduledRun] {
+    guard (try? AppPreferences.check(defaults)) != nil else { return [] }
     let runs = (try? scheduledRuns(project: project)) ?? []
     var seen = defaults.dictionary(forKey: seenKey) as? [String: Int64] ?? [:]
     let last = seen[project]
     seen[project] = max(last ?? .min, runs.first?.startedAtMs ?? 0)
-    defaults.set(seen, forKey: seenKey)
+    guard AppPreferences.set(seen, forKey: seenKey, in: defaults) else { return [] }
     guard let last else { return [] }
     return runs.filter { $0.startedAtMs > last }.reversed()
   }
 
   /// From now on, every run of `project` is told about.
   static func startWatching(_ project: String, defaults: UserDefaults) {
+    guard (try? AppPreferences.check(defaults)) != nil else { return }
     var seen = defaults.dictionary(forKey: seenKey) as? [String: Int64] ?? [:]
     guard seen[project] == nil else { return }
     seen[project] = Int64(Date.now.timeIntervalSince1970 * 1000)
-    defaults.set(seen, forKey: seenKey)
+    AppPreferences.set(seen, forKey: seenKey, in: defaults)
   }
 
   /// Notifications work only in the app itself, not in tests or `swift run`. A separate profile

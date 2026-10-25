@@ -28,6 +28,11 @@ struct RunCommand {
 
   /// Runs the tests one after another; the error is what to tell when they can't start.
   func runTests() throws(UsageError) -> [TestResult] {
+    do { try AppPreferences.checkApp() }
+    catch let failure as AppPreferences.Failure {
+      throw UsageError(message: "jevision: " + failure.localizedDescription,
+        code: failure.code, status: failure.status == 5 ? .needsNewer : .io)
+    } catch { throw UsageError(message: error.localizedDescription, code: "preferences.unreadable", status: .io) }
     let plan: (project: String, tests: [String], environment: String?, filteredOut: Int, folder: String)
     do {
       plan = try Self.plan(request)

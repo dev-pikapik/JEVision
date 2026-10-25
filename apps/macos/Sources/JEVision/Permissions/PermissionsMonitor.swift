@@ -42,8 +42,8 @@ final class PermissionsMonitor {
     if now != granted { granted = now }
     let me = Self.signature
     for permission in now {
-      defaults.set(me, forKey: Self.grantedKey(permission))
-      defaults.removeObject(forKey: Self.requestedKey(permission))
+      AppPreferences.set(me, forKey: Self.grantedKey(permission), in: defaults)
+      AppPreferences.removeObject(forKey: Self.requestedKey(permission), in: defaults)
     }
     let older = Set(
       missing.filter { permission in
@@ -57,13 +57,13 @@ final class PermissionsMonitor {
   /// Asks for `permission` and remembers that it was asked for, so coming back without it
   /// offers a reset.
   func request(_ permission: Permission) {
-    defaults.set(true, forKey: Self.requestedKey(permission))
+    guard AppPreferences.set(true, forKey: Self.requestedKey(permission), in: defaults) else { return }
     away.insert(permission)
     permission.request()
   }
 
   func reset(_ permission: Permission) async {
-    defaults.set(true, forKey: Self.requestedKey(permission))
+    guard AppPreferences.set(true, forKey: Self.requestedKey(permission), in: defaults) else { return }
     away.insert(permission)
     await permission.reset()
     refresh()

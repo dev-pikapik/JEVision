@@ -132,7 +132,7 @@ final class ProjectBoards {
     guard let project, names.contains(name) else { return }
     var saved = defaults.dictionary(forKey: Self.selectionKey) as? [String: String] ?? [:]
     saved[project.path] = name
-    defaults.set(saved, forKey: Self.selectionKey)
+    AppPreferences.set(saved, forKey: Self.selectionKey, in: defaults)
     show(name)
   }
 
@@ -173,7 +173,7 @@ final class ProjectBoards {
     if current == name, let project {
       var saved = defaults.dictionary(forKey: Self.selectionKey) as? [String: String] ?? [:]
       saved[project.path] = nil
-      defaults.set(saved, forKey: Self.selectionKey)
+      AppPreferences.set(saved, forKey: Self.selectionKey, in: defaults)
     }
     reload()
   }

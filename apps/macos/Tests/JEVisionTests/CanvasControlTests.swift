@@ -26,7 +26,7 @@ struct CanvasControlTests {
       .environment(ProjectStore(defaults: profile.defaults))
       .environment(RunCenter(defaults: profile.defaults))
       .environment(RecordCenter())
-      .defaultAppStorage(profile.defaults))
+      .appPreferences(profile.defaults))
     let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 1000, height: 700),
       styleMask: [.titled, .resizable], backing: .buffered, defer: false)
     window.isReleasedWhenClosed = false

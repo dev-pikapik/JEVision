@@ -16,7 +16,7 @@ final class GlassPanel {
   /// `height` defaults to what `content` needs.
   init(_ content: some View, width: Double, height: Double? = nil) {
     let view = FirstMouseHostingView(
-      rootView: content.environment(\.controlActiveState, .key).defaultAppStorage(Profile.current.defaults))
+      rootView: content.environment(\.controlActiveState, .key).appPreferences(Profile.current.defaults))
     size = NSSize(width: width, height: height ?? view.fittingSize.height)
     panel = HUDPanel(
       contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
@@ -99,8 +99,8 @@ struct RunHUD: View {
   /// Tall enough for the longest state; the empty part below the HUD lets clicks through.
   static let height = 560.0
   let center: RunCenter
-  @AppStorage(RunInputSettings.pausesOnMouseKey) private var pausesOnMouse = true
-  @AppStorage(RunInputSettings.escapeStopsKey) private var escapeStops = true
+  @AppPreference(RunInputSettings.pausesOnMouseKey) private var pausesOnMouse = true
+  @AppPreference(RunInputSettings.escapeStopsKey) private var escapeStops = true
   @State private var valuesShown = false
 
   var body: some View {

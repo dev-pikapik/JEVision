@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 import Testing
 
@@ -135,17 +136,22 @@ struct ScaleUIBenchmarkTests {
     let defaults: UserDefaults
     let domain: String
 
-    func close() { defaults.removePersistentDomain(forName: domain) }
+    func close() {
+      defaults.removePersistentDomain(forName: domain)
+      defaults.synchronize()
+    }
 
     func window(_ view: some View) -> some View {
-      view.environment(project).environment(runs).environment(records).defaultAppStorage(defaults)
+      view.environment(project).environment(runs).environment(records).appPreferences(defaults)
     }
   }
 
   private func opened() async throws -> Opened {
     let (root, summary) = try ScaleBench.project()
-    let domain = "ScaleUIBenchmarkTests." + UUID().uuidString
-    let defaults = try #require(UserDefaults(suiteName: domain))
+    let profile = Profile(folder: root.appending(path: ".jevision/Benchmark Preferences/" + UUID().uuidString))
+    try AppPreferences.prepareForGUI(profile)
+    let defaults = profile.defaults
+    let domain = profile.defaultsDomain
     var keepDefaults = false
     defer { if !keepDefaults { defaults.removePersistentDomain(forName: domain) } }
     let project = ProjectStore(defaults: defaults)

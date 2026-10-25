@@ -70,7 +70,9 @@ final class Updates: NSObject {
       return controller?.updater.automaticallyChecksForUpdates ?? false
     }
     set {
-      withMutation(keyPath: \.checksAutomatically) { controller?.updater.automaticallyChecksForUpdates = newValue }
+      _ = withMutation(keyPath: \.checksAutomatically) {
+        AppPreferences.write(in: defaults) { controller?.updater.automaticallyChecksForUpdates = newValue }
+      }
     }
   }
 
@@ -81,7 +83,9 @@ final class Updates: NSObject {
       return controller?.updater.automaticallyDownloadsUpdates ?? false
     }
     set {
-      withMutation(keyPath: \.downloadsAutomatically) { controller?.updater.automaticallyDownloadsUpdates = newValue }
+      _ = withMutation(keyPath: \.downloadsAutomatically) {
+        AppPreferences.write(in: defaults) { controller?.updater.automaticallyDownloadsUpdates = newValue }
+      }
     }
   }
 
@@ -92,7 +96,7 @@ final class Updates: NSObject {
       return defaults.bool(forKey: Self.betasKey)
     }
     set {
-      withMutation(keyPath: \.includesBetas) { defaults.set(newValue, forKey: Self.betasKey) }
+      _ = withMutation(keyPath: \.includesBetas) { AppPreferences.set(newValue, forKey: Self.betasKey, in: defaults) }
     }
   }
 

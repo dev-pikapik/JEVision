@@ -89,8 +89,8 @@ enum LocalServers {
 
 /// Third onboarding step: pick where checks by meaning come from, or skip it.
 struct AIStep: View {
-  @AppStorage(AISettings.providerKey) private var providerID = ""
-  @AppStorage(AISettings.localOnlyKey) private var localOnly = false
+  @AppPreference(AISettings.providerKey) private var providerID = ""
+  @AppPreference(AISettings.localOnlyKey) private var localOnly = false
   /// Local servers that answered; `nil` until the first look.
   @State private var running: Set<String>?
   @State private var isLooking = false

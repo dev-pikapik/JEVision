@@ -51,12 +51,14 @@ final class ProjectSchedules {
     guard let project else { return }
     let path = project.path(percentEncoded: false)
     do {
+      try AppPreferences.check(defaults)
       all = try projectSchedules(project: path)
       warnings = try projectScheduleWarnings(project: path)
       problem = nil
     } catch {
       warnings = []
       problem = error.localizedDescription
+      isOn = false
     }
     do {
       runs = try scheduledRuns(project: path)
@@ -74,11 +76,12 @@ final class ProjectSchedules {
       if evenIfOff, problem == nil { change(to: all) }
       return
     }
-    let state = agents.state(of: project, schedules: all)
-    if problem == nil, !state.current, state.installed || evenIfOff {
+    // The file is the record of this Mac's consent. The queued install checks launchd as well,
+    // away from the main thread, and leaves an unchanged job running.
+    if problem == nil, agents.hasManagedJob(for: project) || evenIfOff {
       change(to: all)
     } else {
-      isOn = !all.isEmpty && state.current
+      isOn = false
     }
   }
 
@@ -91,6 +94,7 @@ final class ProjectSchedules {
     action: String, undoManager: UndoManager?,
     ask: @escaping FileUndo.Ask = FileUndo.askToReplace
   ) throws -> Task<Void, any Error> {
+    try AppPreferences.check(defaults)
     guard let project else { return Task {} }
     let file = project.appending(path: scheduleFileName())
     try FileUndo.record(file, action: action, in: undoManager, ask: ask, then: { [weak self] in self?.followFile() }) {
@@ -114,6 +118,7 @@ final class ProjectSchedules {
 
   /// Has macOS run the schedules of the file on this Mac; throws why, when they don't run.
   func turnOn() async throws {
+    try AppPreferences.check(defaults)
     try await settle(change(to: all))
   }
 
@@ -126,13 +131,28 @@ final class ProjectSchedules {
     changes += 1
     let change = Task {
       _ = await previous?.value
-      let result = await Task.detached { Result { try agents.install(project, schedules: schedules) } }.value
+      let result: Result<Void, any Error>
+      do {
+        try AppPreferences.check(defaults)
+        result = await Task.detached { Result { try agents.install(project, schedules: schedules) } }.value
+      } catch { result = .failure(error) }
       if case .success = result, !schedules.isEmpty {
         ScheduleNotifier.startWatching(ScheduleAgents.path(project), defaults: defaults)
         ScheduleNotifier.askPermission()
       }
       changes -= 1
-      if changes == 0 { reload() }
+      if changes == 0 {
+        read()
+        let sameProject = self.project.map(ScheduleAgents.path) == ScheduleAgents.path(project)
+        if case .success = result {
+          isOn = sameProject && problem == nil && !all.isEmpty && all == schedules
+        } else {
+          isOn = false
+        }
+        // A filesystem refresh can arrive while launchd is taking up an older revision.
+        // Follow that revision once; a failed install does not retry itself in a loop.
+        if !sameProject || all != schedules { follow(evenIfOff: false) }
+      }
       return result
     }
     lastChange = change
@@ -148,7 +168,13 @@ final class ProjectSchedules {
       waited = last
       _ = await last.value
     }
-    if case .failure(let error) = result, !all.isEmpty, !isOn { throw error }
+    if case .failure(let error) = result {
+      if !all.isEmpty, !isOn { throw error }
+      // Removing the last schedule is not complete while the managed job's file remains.
+      if all.isEmpty, let project,
+        (try? FileManager.default.attributesOfItem(atPath: agents.file(for: project).path)) != nil
+      { throw error }
+    }
   }
 
   /// The last run of the schedule named `name`.

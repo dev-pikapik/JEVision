@@ -10,11 +10,11 @@ struct EditorView: View {
   @Environment(\.undoManager) private var undoManager
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.workspaceInsets) private var workspaceInsets
-  @AppStorage("workspaceInspectorWidth") private var preferredInspectorWidth = 380.0
+  @AppPreference("workspaceInspectorWidth") private var preferredInspectorWidth = 380.0
   let document: FlowDocument
   @State private var camera = FlowViewport()
   @State private var needsInitialPosition = true
-  @AppStorage("flowShowsMinimap") private var showsMinimap = true
+  @AppPreference("flowShowsMinimap") private var showsMinimap = true
   @State private var showsInspector = true
   @State private var showsDetails = false
   /// Where the palette adds a block; `nil` while it is closed.

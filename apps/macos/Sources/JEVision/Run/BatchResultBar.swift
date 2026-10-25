@@ -41,7 +41,7 @@ struct BatchResultBar: View {
           .fixedSize(horizontal: false, vertical: true)
           Spacer(minLength: 12)
           Button("Notification Settings") {
-            Profile.current.defaults.set(SettingsTab.notifications.rawValue, forKey: SettingsTab.key)
+            AppPreferences.set(SettingsTab.notifications.rawValue, forKey: SettingsTab.key, in: Profile.current.defaults)
             openSettings()
           }
           .buttonStyle(.glass)

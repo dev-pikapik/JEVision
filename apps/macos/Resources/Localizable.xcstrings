@@ -45412,6 +45412,54 @@
         }
       }
     },
+    "preferences.backupFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision couldn’t save a backup of its settings. No settings were changed."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision не удалось сохранить резервную копию настроек. Настройки не изменены."
+          }
+        }
+      }
+    },
+    "preferences.needsNewer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These settings were saved by a newer JEVision. Open them with a newer version. No settings were changed."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эти настройки сохранены в более новой версии JEVision. Откройте их в новой версии. Настройки не изменены."
+          }
+        }
+      }
+    },
+    "preferences.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision couldn’t read its settings. Restore a valid settings backup before continuing. No settings were changed."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision не удалось прочитать настройки. Перед продолжением восстановите исправную резервную копию настроек. Настройки не изменены."
+          }
+        }
+      }
+    },
     "project.ai.jevText" : {
       "localizations" : {
         "en" : {

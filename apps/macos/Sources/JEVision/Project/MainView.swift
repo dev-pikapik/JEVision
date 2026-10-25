@@ -7,7 +7,7 @@ struct MainView: View {
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
   @Environment(\.undoManager) private var undoManager
-  @AppStorage(OnboardingView.doneKey) private var onboardingDone = false
+  @AppPreference(OnboardingView.doneKey) private var onboardingDone = false
   let appDelegate: AppDelegate
   /// The New Test or New Project sheet was opened to record: the test it creates is recorded
   /// once it closes.

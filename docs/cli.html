@@ -123,7 +123,7 @@ jevision --help</code></pre>
     <tr><td><code>0</code></td><td>All good: the tests passed, or no problems were found.</td></tr>
     <tr><td><code>1</code></td><td>A test failed or was stopped, or problems were found in the tests.</td></tr>
     <tr><td><code>2</code></td><td>The command can't be done as asked, and trying again won't help: an unknown command or option, a file or folder that isn't there, a folder with no tests. For <code>jevision issue</code>, also: no run failed, so there is nothing to report, or the project can't take the report as it is, such as one that isn't on GitHub or has no remote.</td></tr>
-    <tr><td><code>3</code></td><td>A file couldn't be read or written: a test, a settings file of the project, a report.</td></tr>
+    <tr><td><code>3</code></td><td>A file couldn't be read or written: a test, app or project settings, a report.</td></tr>
     <tr><td><code>4</code></td><td>This Mac isn't ready yet, and trying again later can help: nobody is logged in, the screen is locked, or macOS hasn't allowed <code>jevision</code> what it needs (see <a href="#ready">below</a>). For <code>jevision issue --send</code>, also: git or the GitHub CLI isn't installed, you aren't signed in to GitHub or your sign-in ran out, your account can't write to the repository, or GitHub can't be reached or turned the report down without saying why. For <code>jevision mcp --pair</code> and <code>--remote</code>, also: the other Mac can't be reached.</td></tr>
     <tr><td><code>5</code></td><td>A file needs a newer JEVision: a test, a block or a settings file saved in a newer format.</td></tr>
     <tr><td><code>6</code>–<code>63</code></td><td>Kept for later versions.</td></tr>
@@ -474,24 +474,32 @@ jevision blocks restore --yes</code></pre>
 <pre><code>$ jevision version --json
 {
   "jsonVersion": 1,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "formats": [
-    { "file": "*.flow.json", "version": 1 },
-    { "file": "*.block.json", "version": 1 },
+    { "file": "*.flow.json", "version": 2 },
+    { "file": "*.block.json", "version": 2 },
+    { "file": "*.template.json", "version": 2 },
+    { "file": "*.jevmeta", "version": 1 },
     { "file": "jevision.project.json", "version": 1 },
     { "file": "jevision.environments.json", "version": 1 },
     { "file": "jevision.schedule.json", "version": 1 },
     { "file": "block.json", "version": 1 },
-    { "file": "report.json", "version": 1 }
+    { "file": "jevision.blocks.json", "version": 1 },
+    { "file": "report.json", "version": 1 },
+    { "file": "jevision.notifications.json", "version": 2 },
+    { "file": "last-results.json", "version": 1 },
+    { "file": "schedule-history.json", "version": 1 }
   ],
   "iphoneProtocol": { "oldest": 1, "newest": 1 },
   "cliBridgeProtocol": { "oldest": 1, "newest": 1 },
+  "preferencesFormat": 1,
   "mcpProtocols": ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
 }</code></pre>
 <ul>
   <li><code>formats</code> lists the <a href="file-formats.html">files</a> by name, or by the ending of their name: tests, your own blocks, the settings of a project, its environments and schedules, the description of a shared block (<code>block.json</code>) and the report of a run. <code>version</code> is the <code>format</code> this version writes in the file; a file with a higher one needs a newer JEVision, and commands that meet one end with <a href="#exit-codes">status <code>5</code></a>.</li>
   <li><code>iphoneProtocol</code> is the range of versions of the connection between the <a href="iphone.html">iPhone app</a> and this Mac. The iPhone app works with this Mac when its version is in the range.</li>
   <li><code>cliBridgeProtocol</code> is the range of formats supported by <a href="#through-app"><code>--through-app</code></a>. The current bridge also accepts its original unversioned request and plain exit-status file.</li>
+  <li><code>preferencesFormat</code> is the newest supported <a href="file-formats.html#preferences">app-preferences format</a>. Version discovery does not read or migrate preferences.</li>
   <li><code>mcpProtocols</code> are the versions of the Model Context Protocol <a href="#mcp"><code>jevision mcp</code></a> speaks, newest first.</li>
 </ul>
 

@@ -26,7 +26,7 @@ final class ProjectStore {
   var selection: ProjectItem.ID? {
     didSet {
       guard selection != oldValue else { return }
-      defaults.set(selection, forKey: Key.selection)
+      AppPreferences.set(selection, forKey: Key.selection, in: defaults)
       if selection != nil { showsBoard = false }
       openSelection()
     }
@@ -267,7 +267,7 @@ final class ProjectStore {
   func close() {
     leave { [weak self] in
       guard let self else { return }
-      defaults.removeObject(forKey: Key.current)
+      AppPreferences.removeObject(forKey: Key.current, in: defaults)
       shut()
       refreshSummaries()
     }
@@ -378,7 +378,7 @@ final class ProjectStore {
   }
 
   private func move(_ path: String, to url: URL) {
-    if defaults.string(forKey: Key.myTests) == path { defaults.set(url.path, forKey: Key.myTests) }
+    if defaults.string(forKey: Key.myTests) == path { AppPreferences.set(url.path, forKey: Key.myTests, in: defaults) }
     save(recentProjectsRelocated(
       list: recent, oldPath: path, newPath: url.path, name: FileManager.default.displayName(atPath: url.path),
       bookmark: Self.bookmark(url)))
@@ -415,12 +415,12 @@ final class ProjectStore {
     save(recentProjectsOpened(
       list: recent, path: url.path, name: FileManager.default.displayName(atPath: url.path), bookmark: Self.bookmark(url),
       now: Int64(clock().timeIntervalSince1970)))
-    defaults.set(url.path, forKey: Key.current)
+    AppPreferences.set(url.path, forKey: Key.current, in: defaults)
   }
 
   private func save(_ list: [RecentProject]) {
     recent = list
-    defaults.set(recentProjectsEncode(list: list), forKey: Key.recent)
+    AppPreferences.set(recentProjectsEncode(list: list), forKey: Key.recent, in: defaults)
   }
 
   /// Moves the one project of versions before the recent list into it, to open again at launch.
@@ -431,10 +431,10 @@ final class ProjectStore {
       save(recentProjectsOpened(
         list: [], path: path, name: defaults.string(forKey: Key.name) ?? "", bookmark: bookmark,
         now: Int64(clock().timeIntervalSince1970)))
-      defaults.set(path, forKey: Key.current)
+      AppPreferences.set(path, forKey: Key.current, in: defaults)
     }
-    defaults.removeObject(forKey: Key.bookmark)
-    defaults.removeObject(forKey: Key.name)
+    AppPreferences.removeObject(forKey: Key.bookmark, in: defaults)
+    AppPreferences.removeObject(forKey: Key.name, in: defaults)
   }
 
   private static func bookmark(_ url: URL) -> Data {
@@ -615,7 +615,7 @@ final class ProjectStore {
       folder = URL(filePath: try createProject(parent: parent, name: name, starter: .empty).path, directoryHint: .isDirectory)
       AppLog.info("Project made: \(folder.path)", "project")
     }
-    defaults.set(folder.path, forKey: Key.myTests)
+    AppPreferences.set(folder.path, forKey: Key.myTests, in: defaults)
     openProject(folder)
   }
 

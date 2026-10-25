@@ -23,7 +23,12 @@ struct MCPCommand {
   var action = MCPAction.serve
 
   func execute() -> ExitStatus {
-    switch action {
+    do { try AppPreferences.checkApp() }
+    catch {
+      Console.standardError.line("jevision: \(error.localizedDescription)")
+      return (error as? AppPreferences.Failure)?.status == 5 ? .needsNewer : .io
+    }
+    return switch action {
     case .serve: serveHere()
     case .pair(let link): pair(link)
     case .remote(let name): serveRemote(name)

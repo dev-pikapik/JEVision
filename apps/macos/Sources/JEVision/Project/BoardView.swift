@@ -15,8 +15,8 @@ struct BoardView: View {
   @Environment(\.workspaceInsets) private var workspaceInsets
   @State private var headerHeight = 80.0
   @State private var headerMeasured = false
-  @AppStorage("boardShowsMinimap") private var showsMinimap = true
-  @AppStorage(GridSnap.key) private var snaps = true
+  @AppPreference("boardShowsMinimap") private var showsMinimap = true
+  @AppPreference(GridSnap.key) private var snaps = true
   @State private var viewport = BoardViewport()
   @State private var size = CGSize.zero
   /// The board hasn't been looked at yet: once its size is known, it zooms to show everything.

@@ -7,9 +7,9 @@ import SwiftUI
 struct AssistantsSection: View {
   @Environment(ProjectStore.self) private var project
   @Environment(SettingsModel.self) private var settings
-  @AppStorage(AISettings.assistantsRunKey) private var mayRun = false
-  @AppStorage(AISettings.assistantsCaptureKey) private var mayCapture = false
-  @AppStorage(AISettings.assistantsAskFirstKey) private var askFirst = true
+  @AppPreference(AISettings.assistantsRunKey) private var mayRun = false
+  @AppPreference(AISettings.assistantsCaptureKey) private var mayCapture = false
+  @AppPreference(AISettings.assistantsAskFirstKey) private var askFirst = true
   @State private var assistants: [ConnectedAssistant] = []
   private let tool = CommandLineTool.bundled
 

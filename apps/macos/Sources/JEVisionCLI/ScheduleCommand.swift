@@ -9,6 +9,7 @@ struct ScheduleCommand {
   let project: String
   var progress = Console.standardOutput
   var now: () -> Date = Date.init
+  var checkPreferences: () throws -> Void = { try AppPreferences.checkApp() }
   /// Why tests can't run on this Mac right now; `nil` when they can.
   var blocker: () -> SkipReason? = Self.blocker
   var runTests: (RunRequest) throws(UsageError) -> [TestResult] = { request throws(UsageError) in
@@ -16,6 +17,7 @@ struct ScheduleCommand {
   }
 
   func execute() -> ExitStatus {
+    if let failure = preferencesProblem() { return failure }
     guard let root = realpath(project, nil).map({ path in
       defer { free(path) }
       return String(cString: path)
@@ -26,6 +28,7 @@ struct ScheduleCommand {
     var status = ExitStatus.ok
     // Runs that came due while others ran are run next.
     while true {
+      if let failure = preferencesProblem() { return max(status, failure) }
       let due: [ProjectSchedule]
       do {
         due = try beginScheduleCheck(project: root, now: LocalMinute.of(now()))
@@ -35,8 +38,17 @@ struct ScheduleCommand {
       }
       if due.isEmpty { return status }
       for schedule in due {
+        if let failure = preferencesProblem() { return max(status, failure) }
         status = max(status, run(schedule, in: root))
       }
+    }
+  }
+
+  private func preferencesProblem() -> ExitStatus? {
+    do { try checkPreferences(); return nil }
+    catch {
+      Console.standardError.line("jevision: \(error.localizedDescription)")
+      return (error as? AppPreferences.Failure)?.status == 5 ? .needsNewer : .io
     }
   }
 

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>appearance</key>
+	<string>dark</string>
+	<key>future.data</key>
+	<data>
+	AAH+/w==
+	</data>
+	<key>future.date</key>
+	<date>2026-10-24T12:30:00Z</date>
+	<key>future.nested</key>
+	<dict>
+		<key>flag</key>
+		<true/>
+		<key>values</key>
+		<array>
+			<string>alpha</string>
+			<integer>7</integer>
+			<dict>
+				<key>kept</key>
+				<string>yes</string>
+			</dict>
+		</array>
+	</dict>
+	<key>preferences.format</key>
+	<integer>1</integer>
+</dict>
+</plist>

@@ -27,7 +27,7 @@ struct CommandPalettePresenter<Palette: View>: NSViewRepresentable {
       let point = location.map { window.convertPoint(toScreen: view.convert($0, to: nil)) }
       coordinator.panel = CommandPalettePanel(
         palette().environment(\.locale, locale).environment(\.layoutDirection, direction)
-          .defaultAppStorage(Profile.current.defaults),
+          .appPreferences(Profile.current.defaults),
         size: size, topLeft: point, over: window, dismiss: dismiss)
     } else if !isPresented, let panel = coordinator.panel {
       coordinator.panel = nil

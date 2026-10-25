@@ -244,7 +244,7 @@ private struct CIRunsUnavailable: View {
   }
 
   private func show(_ tab: SettingsTab) {
-    Profile.current.defaults.set(tab.rawValue, forKey: SettingsTab.key)
+    AppPreferences.set(tab.rawValue, forKey: SettingsTab.key, in: Profile.current.defaults)
     openSettings()
   }
 }

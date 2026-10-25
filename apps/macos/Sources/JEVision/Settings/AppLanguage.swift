@@ -111,9 +111,9 @@ final class AppLanguage: Observable, Sendable {
   /// Applies a choice at once and keeps it for the next launch.
   func choose(_ code: String) {
     if code.isEmpty {
-      defaults.removeObject(forKey: Self.key)
+      AppPreferences.removeObject(forKey: Self.key, in: defaults)
     } else {
-      defaults.set([code], forKey: Self.key)
+      AppPreferences.set([code], forKey: Self.key, in: defaults)
     }
     refresh()
   }

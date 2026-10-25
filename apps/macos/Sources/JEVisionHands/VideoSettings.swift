@@ -27,7 +27,8 @@ public struct VideoSettings {
   /// Days a video stays; `nil` keeps them all.
   public var keepDays: UInt32? {
     let days = defaults.object(forKey: Self.keepDaysKey) as? Int ?? Self.defaultKeepDays
-    return days > 0 ? UInt32(days) : nil
+    guard days != 0 else { return nil }
+    return UInt32(exactly: days).flatMap { $0 > 0 ? $0 : nil } ?? UInt32(Self.defaultKeepDays)
   }
 }
 

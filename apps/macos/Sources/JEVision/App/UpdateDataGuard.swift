@@ -1,4 +1,5 @@
 import Foundation
+import JEVisionHands
 
 /// Before an update that stores tests or settings in a newer way, saves a copy of them, so they
 /// can still be opened with the version from before. A copy is never deleted by JEVision.
@@ -8,13 +9,13 @@ import Foundation
 struct UpdateDataGuard {
   static let feedKey = "jevision:dataFormat"
   static let infoKey = "JEVisionDataFormat"
-  static let folder = URL.applicationSupportDirectory.appending(path: "JEVision", directoryHint: .isDirectory)
+  static let folder = Profile.current.supportFolder
   static var backups: URL { folder.appending(path: "Backups", directoryHint: .isDirectory) }
 
   var current = Bundle.main.object(forInfoDictionaryKey: infoKey) as? Int ?? 1
   var folder = Self.folder
-  var settings = Bundle.main.bundleIdentifier.flatMap { UserDefaults.standard.persistentDomain(forName: $0) }
-  var project = Self.openProject(in: .standard)
+  var settings = Profile.current.defaults.persistentDomain(forName: Profile.current.defaultsDomain)
+  var project = Self.openProject(in: Profile.current.defaults)
   var now = Date.now
 
   var backups: URL { folder.appending(path: "Backups", directoryHint: .isDirectory) }

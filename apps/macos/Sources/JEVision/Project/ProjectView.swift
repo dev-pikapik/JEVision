@@ -9,8 +9,8 @@ struct ProjectView: View {
   @Environment(RecordCenter.self) private var records
   @Environment(\.layoutDirection) private var layoutDirection
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @AppStorage("workspaceSidebarWidth") private var sidebarWidth = 340.0
-  @AppStorage("workspaceShowsSidebar") private var showsSidebar = true
+  @AppPreference("workspaceSidebarWidth") private var sidebarWidth = 340.0
+  @AppPreference("workspaceShowsSidebar") private var showsSidebar = true
   @State private var search = SidebarSearch()
   @State private var catalog = ProjectCatalog()
   @State private var expandedProjects: Set<String> = []
@@ -526,7 +526,7 @@ private struct GitChip: View {
   let status: GitStatus
   @Environment(\.openSettings) private var openSettings
   @Environment(\.openWindow) private var openWindow
-  @AppStorage(SettingsTab.key) private var tab = SettingsTab.general
+  @AppPreference(SettingsTab.key) private var tab = SettingsTab.general
 
   var body: some View {
     let branch = status.branch ?? String(localized: "No branch")

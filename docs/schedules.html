@@ -117,7 +117,7 @@
 <h2 id="how">How schedules run</h2>
 <p>A schedule file in git does nothing by itself on a Mac: schedules run on a Mac only after you save them or click <strong>Turn On</strong> in the sheet there. The app then installs a launch agent for the project, a small file macOS uses to start programs at set times:</p>
 <pre><code>~/Library/LaunchAgents/io.github.dev-pikapik.jevision.schedule.&lt;id&gt;.plist</code></pre>
-<p>The app keeps it in step with the schedule file. Deleting every schedule removes the launch agent.</p>
+<p>The app keeps it in step with the schedule file. At launch it checks only projects already enabled on this Mac, verifies their managed agent files, and reconnects missing jobs or updates the command path after the app moves. An unchanged job still registered with macOS is left running. Opening another project never enables its schedules by itself. Newer or unreadable schedule files and histories are reported without replacing the agent. Deleting every schedule removes the launch agent; if macOS cannot stop it, JEVision reports the failure and keeps its file.</p>
 <p>At the schedules' times, the agent starts <code>jevision schedule run <var>project</var></code>. This command:</p>
 <ul>
   <li>runs every schedule that is due now;</li>

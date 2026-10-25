@@ -211,7 +211,7 @@ final class RunCenter {
     _ document: FlowDocument, in project: URL, from block: String? = nil, stepByStep: Bool = false,
     addedAsDependency: Bool = false
   ) {
-    guard !isBusy, document.flow != nil else { return }
+    guard !isBusy, document.flow != nil, AppPreferences.write(in: defaults, {}) else { return }
     let request = Request(
       document: document, project: project, from: block, stepByStep: stepByStep, addedAsDependency: addedAsDependency)
     let missing = Self.missing(for: request, in: batchEnvironments(of: project))
@@ -225,6 +225,7 @@ final class RunCenter {
   /// `dataRow` runs only that row of the test's data table; `nil` runs every row.
   func runRemotely(_ test: String, in project: URL, dataRow: Int? = nil, requestedBy device: String) -> RemoteError? {
     guard !isBusy else { return .RunInProgress }
+    guard AppPreferences.write(in: defaults, {}) else { return .HostFailed }
     let request = Request(
       document: FlowDocument(url: project.appending(path: test), project: project), project: project, from: nil, stepByStep: false,
       requestedBy: device, dataRow: dataRow)
@@ -246,7 +247,7 @@ final class RunCenter {
   /// history, and sums up how they did. A test whose dependency didn't pass is saved as blocked
   /// instead of run. They run as the project settings say for `folder`, relative to the project.
   func runAll(_ tests: [URL], in project: URL, title: String, folder: String = ".") {
-    guard !isBusy, !tests.isEmpty else { return }
+    guard !isBusy, !tests.isEmpty, AppPreferences.write(in: defaults, {}) else { return }
     batchResult = nil
     let path = project.path(percentEncoded: false)
     // Settings that can't be read fail each run with the reason; one after another is the safe way.
@@ -360,6 +361,7 @@ final class RunCenter {
 
   /// Starts the run; `false` when something it needs is missing or the emergency stop can't be armed.
   private func start(_ request: Request, usesScreen: Bool = true) -> Bool {
+    guard AppPreferences.write(in: defaults, {}) else { return false }
     let run = makeRun()
     run.setStepMode(on: request.stepByStep)
     // Breakpoints are for debugging here; a run from afar would wait at them for nobody.
@@ -474,7 +476,7 @@ final class RunCenter {
       live.run.setBreakpoints(blocks: Array(set))
     }
     let saved = Dictionary(uniqueKeysWithValues: breakpoints.map { ($0.key.path, $0.value.sorted()) })
-    defaults.set(saved, forKey: Self.breakpointsKey)
+    AppPreferences.set(saved, forKey: Self.breakpointsKey, in: defaults)
   }
 
   // MARK: Results
@@ -518,7 +520,7 @@ final class RunCenter {
   func declineGitIgnore() {
     guard let project = result?.project else { return }
     let declined = defaults.stringArray(forKey: Self.declinedKey) ?? []
-    defaults.set(declined + [project.path], forKey: Self.declinedKey)
+    AppPreferences.set(declined + [project.path], forKey: Self.declinedKey, in: defaults)
     result?.offersGitIgnore = false
   }
 
