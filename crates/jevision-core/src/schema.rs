@@ -325,6 +325,15 @@ impl JsonSchema for Reference {
                         its chosen one.",
                     "type": "string",
                 },
+                "confidence": {
+                    "description": "For `meaning`: how sure the model must be that the screen \
+                        shows it, from 0.5 to 0.99. Only JEV says how sure it is; the other \
+                        providers' yes or no counts as it is.",
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 0.99,
+                    "default": Compare::DEFAULT_CONFIDENCE,
+                },
                 "area": with(rect.clone(), "Part of the image to compare; without it, the \
                     whole image."),
                 "ignore": {
@@ -353,6 +362,7 @@ impl JsonSchema for Reference {
                 "expect": meaning,
                 "provider": meaning,
                 "model": meaning,
+                "confidence": meaning,
             },
         })
     }

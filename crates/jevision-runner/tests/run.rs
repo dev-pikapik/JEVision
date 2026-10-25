@@ -2831,6 +2831,7 @@ struct Judge {
 struct Asked {
     expect: String,
     model: String,
+    confidence: f64,
     screenshot: Vec<u8>,
     reference: Option<Vec<u8>>,
 }
@@ -2851,6 +2852,7 @@ impl Judge {
             false,
             Ok(Judgement {
                 passed,
+                probability: None,
                 reason: if passed {
                     "Two items in the cart."
                 } else {
@@ -2883,6 +2885,7 @@ impl VisionJudge for Judge {
         self.asked.lock().unwrap().push(Asked {
             expect: q.expect.to_owned(),
             model: q.model.to_owned(),
+            confidence: q.confidence,
             screenshot: q.screenshot.png().to_vec(),
             reference: q.reference.map(|r| r.png().to_vec()),
         });
@@ -3011,6 +3014,44 @@ fn checks_by_meaning_show_the_model_only_the_compared_part_with_private_parts_co
     assert_eq!(failure.code, "run.check.meaningMismatch");
     assert_eq!(failure.param("reason"), "The cart is empty.");
     assert_eq!(failure.param("provider"), "Test Vision");
+}
+
+#[test]
+fn a_check_by_meaning_reports_the_confidence_it_needs() {
+    let p = Project::new();
+    p.test(
+        r#""check":{"type":"check","reference":{"compare":"meaning","expect":"Signed in","confidence":0.9}}"#,
+        "check",
+        0,
+    );
+    let hands = Fake::new(solid([0, 200, 0]));
+    // A model that says how sure it is, short of what the check needs.
+    let judge = Judge::new(
+        false,
+        Ok(Judgement {
+            passed: false,
+            probability: Some(0.83),
+            reason: "JEV is only 83% sure the screenshot meets the expectation.".into(),
+            usage: Usage::default(),
+        }),
+    );
+    let report = run_judged(&p, &hands, Some(&judge), false).report;
+    assert_eq!(judge.asked.lock().unwrap()[0].confidence, 0.9);
+    assert_eq!(report.verdict, Verdict::Failed);
+    assert_eq!(
+        report.attempts[0].steps[0].vision.as_ref().unwrap().reason,
+        "JEV is only 83% sure the screenshot meets the expectation. The check needs 90%."
+    );
+
+    // A model that answers only yes or no: its answer counts, and the report says why.
+    let judge = Judge::says(true);
+    let report = run_judged(&p, &hands, Some(&judge), false).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    assert_eq!(
+        report.attempts[0].steps[0].vision.as_ref().unwrap().reason,
+        "Two items in the cart. Test Vision doesn’t say how sure it is, so its own answer \
+         counted instead of the 90% confidence."
+    );
 }
 
 #[test]
@@ -3228,6 +3269,7 @@ fn a_model_quoting_a_secret_from_the_screen_is_masked() {
         false,
         Ok(Judgement {
             passed: false,
+            probability: None,
             reason: format!("The password field shows {SECRET}."),
             usage: Usage::default(),
         }),

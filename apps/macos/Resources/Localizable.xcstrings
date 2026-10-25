@@ -31,6 +31,16 @@
         }
       }
     },
+    "%@ answers only yes or no, so the confidence applies only when JEV checks." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ отвечает только «да» или «нет», поэтому уверенность действует, только когда проверяет JEV."
+          }
+        }
+      }
+    },
     "%@ Colleagues who open this test will need this version of JEVision or newer." : {
       "localizations" : {
         "ru" : {
@@ -4999,6 +5009,16 @@
         }
       }
     },
+    "at least %@ sure" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "уверенность от %@"
+          }
+        }
+      }
+    },
     "Attach" : {
       "localizations" : {
         "ru" : {
@@ -7537,6 +7557,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Условия и циклы"
+          }
+        }
+      }
+    },
+    "Confidence" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уверенность"
           }
         }
       }
@@ -10521,6 +10551,38 @@
         }
       }
     },
+    "flow.reference.confidenceNeedsMeaning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A confidence works only with “By Meaning” comparison."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уверенность работает только со сравнением «По смыслу»."
+          }
+        }
+      }
+    },
+    "flow.reference.confidenceNeedsProbability" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only JEV says how sure it is. This AI answers only yes or no, so the confidence doesn’t apply and its answer counts as it is."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только JEV сообщает, насколько он уверен. Этот ИИ отвечает только «да» или «нет», поэтому уверенность к нему не применяется и его ответ засчитывается как есть."
+          }
+        }
+      }
+    },
     "Fold" : {
       "localizations" : {
         "en" : {
@@ -11165,6 +11227,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Объединяет блоки в раздел с названием"
+          }
+        }
+      }
+    },
+    "How sure JEV must be that the screen shows this. At %@ its yes or no decides; higher passes only when JEV is at least that sure." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Насколько JEV должен быть уверен, что на экране именно это. При %@ решает его «да» или «нет»; выше — проверка пройдёт, только если JEV уверен хотя бы настолько."
           }
         }
       }
@@ -20012,6 +20084,38 @@
         }
       }
     },
+    "run.vision.confidenceNeeded" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The check needs %lld%%."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверке нужно %lld %%."
+          }
+        }
+      }
+    },
+    "run.vision.noProbability" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ doesn’t say how sure it is, so its own answer counted instead of the %lld%% confidence."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ не сообщает, насколько уверен, поэтому засчитан его собственный ответ, а не уверенность %2$lld %%."
+          }
+        }
+      }
+    },
     "Running" : {
       "localizations" : {
         "ru" : {
@@ -27208,6 +27312,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Виртуальная машина"
+          }
+        }
+      }
+    },
+    "vision.jev.unsure" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEV is only %lld%% sure the screenshot meets the expectation."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEV уверен лишь на %lld %%, что снимок экрана соответствует ожиданию."
           }
         }
       }

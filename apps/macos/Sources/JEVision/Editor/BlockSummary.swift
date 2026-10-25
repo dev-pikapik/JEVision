@@ -307,15 +307,19 @@ enum BlockSummary {
 
   /// What a comparison by meaning expects, when it says.
   private static func expectation(_ reference: Reference) -> String? {
-    guard case .meaning(let expect, _, _) = reference.compare else { return nil }
+    guard case .meaning(let expect, _, _, _) = reference.compare else { return nil }
     let text = expect.trimmingCharacters(in: .whitespacesAndNewlines)
     return text.isEmpty ? nil : text
   }
 
-  /// `text`, followed by the AI the block asks when it names one instead of the settings' one.
+  /// `text`, followed by the AI the block asks when it names one instead of the settings' one,
+  /// and the confidence it needs when that is more than an even chance.
   private static func judged(_ text: String, by reference: Reference) -> String {
-    guard case .meaning(_, _, let id) = reference.compare, !id.isEmpty else { return text }
-    return text + " · " + (visionProviders().first { $0.id == id }?.name ?? id)
+    guard case .meaning(_, _, let id, let confidence) = reference.compare else { return text }
+    var text = text
+    if !id.isEmpty { text += " · " + (visionProviders().first { $0.id == id }?.name ?? id) }
+    if confidence > 0.5 { text += " · " + String(localized: "at least \(percent(confidence)) sure") }
+    return text
   }
 
   static func percent(_ fraction: Double) -> String {

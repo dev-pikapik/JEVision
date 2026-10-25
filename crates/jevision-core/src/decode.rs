@@ -1646,6 +1646,10 @@ fn reference(o: &mut Obj<'_>, out: &mut Out) -> Option<Reference> {
         .get("threshold")
         .is_some()
         .then(|| o.number("threshold", out));
+    let confidence = o
+        .get("confidence")
+        .is_some()
+        .then(|| o.number("confidence", out));
     let area = o.opt_object("area", out).and_then(|a| rect(a, out));
     let ignore = rects(o, "ignore", out);
     let hide = rects(o, "hide", out);
@@ -1654,11 +1658,14 @@ fn reference(o: &mut Obj<'_>, out: &mut Out) -> Option<Reference> {
         (CompareMode::Similar, None) => Some(Compare::default()),
         (CompareMode::Similar, Some(t)) => t.map(|threshold| Compare::Similar { threshold }),
         (CompareMode::Exact, None) => Some(Compare::Exact),
-        (CompareMode::Meaning, None) => Some(Compare::Meaning {
-            expect: expect.clone().unwrap_or_default(),
-            model: model.clone().unwrap_or_default().trim().to_owned(),
-            provider: provider.clone().unwrap_or_default().trim().to_owned(),
-        }),
+        (CompareMode::Meaning, None) => confidence
+            .unwrap_or(Some(Compare::DEFAULT_CONFIDENCE))
+            .map(|confidence| Compare::Meaning {
+                expect: expect.clone().unwrap_or_default(),
+                model: model.clone().unwrap_or_default().trim().to_owned(),
+                provider: provider.clone().unwrap_or_default().trim().to_owned(),
+                confidence,
+            }),
         (_, Some(_)) => {
             out.push(o.issue(
                 "flow.reference.thresholdNeedsSimilar",
@@ -1677,6 +1684,12 @@ fn reference(o: &mut Obj<'_>, out: &mut Out) -> Option<Reference> {
         out.push(o.issue(
             "flow.reference.providerNeedsMeaning",
             &o.path_of("provider"),
+        ));
+        None
+    } else if confidence.is_some() && !matches!(mode, Some(CompareMode::Meaning)) {
+        out.push(o.issue(
+            "flow.reference.confidenceNeedsMeaning",
+            &o.path_of("confidence"),
         ));
         None
     } else {

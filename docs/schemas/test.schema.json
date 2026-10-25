@@ -1638,6 +1638,16 @@
     "Reference": {
       "additionalProperties": false,
       "dependentSchemas": {
+        "confidence": {
+          "properties": {
+            "compare": {
+              "const": "meaning"
+            }
+          },
+          "required": [
+            "compare"
+          ]
+        },
         "expect": {
           "properties": {
             "compare": {
@@ -1709,6 +1719,13 @@
             "exact",
             "meaning"
           ]
+        },
+        "confidence": {
+          "default": 0.5,
+          "description": "For `meaning`: how sure the model must be that the screen shows it, from 0.5 to 0.99. Only JEV says how sure it is; the other providers' yes or no counts as it is.",
+          "maximum": 0.99,
+          "minimum": 0.5,
+          "type": "number"
         },
         "expect": {
           "description": "For `meaning`: what the screen must show, in words.",

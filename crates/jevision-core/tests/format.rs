@@ -356,6 +356,79 @@ fn unreadable_files_report_codes_with_params() {
 }
 
 #[test]
+fn a_check_by_meaning_keeps_its_confidence() {
+    let sure = minimal(
+        r#"{"a": {"type": "check", "reference": {"compare": "meaning", "expect": "Saved", "confidence": 0.9}}}"#,
+    );
+    let flow = parse(&sure).unwrap();
+    let BlockKind::Check {
+        of: CheckOf::Screen(reference),
+        ..
+    } = &flow.blocks[0].kind
+    else {
+        panic!("a check")
+    };
+    assert!(matches!(reference.compare, Compare::Meaning { confidence, .. } if confidence == 0.9));
+    let written = to_canonical_json(&flow);
+    assert!(written.contains(r#""confidence": 0.9"#), "{written}");
+    assert_eq!(to_canonical_json(&parse(&written).unwrap()), written);
+
+    // Files without one, and ones that say the default, load as an even chance and say nothing.
+    for json in [
+        r#"{"a": {"type": "check", "reference": {"compare": "meaning", "expect": "Saved"}}}"#,
+        r#"{"a": {"type": "check", "reference": {"compare": "meaning", "expect": "Saved", "confidence": 0.5}}}"#,
+    ] {
+        let flow = parse(&minimal(json)).unwrap();
+        let BlockKind::Check {
+            of: CheckOf::Screen(reference),
+            ..
+        } = &flow.blocks[0].kind
+        else {
+            panic!("a check")
+        };
+        assert!(matches!(
+            reference.compare,
+            Compare::Meaning { confidence, .. } if confidence == Compare::DEFAULT_CONFIDENCE
+        ));
+        assert!(!to_canonical_json(&flow).contains("confidence"));
+    }
+
+    let elsewhere = parse_err(&minimal(
+        r#"{"a": {"type": "check", "reference": {"image": "x.png", "confidence": 0.9}}}"#,
+    ));
+    assert_eq!(codes(&elsewhere), ["flow.reference.confidenceNeedsMeaning"]);
+    assert_eq!(elsewhere[0].param("field"), Some("reference.confidence"));
+}
+
+#[test]
+fn a_confidence_stays_in_range_and_suits_jev_only() {
+    let check = |provider: &str, confidence: f64| {
+        issues_of(&format!(
+            r#"{{"a": {{"type": "check", "reference": {{"compare": "meaning", "expect": "Saved", "provider": "{provider}", "confidence": {confidence}}}}}}}"#
+        ))
+    };
+    for confidence in [0.49, 1.0] {
+        let issues = check("jev", confidence);
+        assert_eq!(codes(&issues), ["flow.field.range"], "{confidence}");
+        assert_eq!(issues[0].param("field"), Some("reference.confidence"));
+        assert_eq!(
+            describe_in("en", &issues[0]),
+            "Block “a”, field “reference.confidence”: Must be from 50% to 99%."
+        );
+    }
+    assert!(check("jev", 0.99).is_empty());
+    assert!(check("jev-cloudflare", 0.5).is_empty());
+    // Others answer yes or no: the confidence can't apply, which the editor says.
+    let others = check("openai", 0.9);
+    assert_eq!(
+        codes(&others),
+        ["flow.reference.confidenceNeedsProbability"]
+    );
+    assert_eq!(others[0].severity, Severity::Warning);
+    assert!(check("openai", 0.5).is_empty());
+}
+
+#[test]
 fn broken_edges_are_errors() {
     let issues =
         issues_of(r#"{"a": {"type": "if", "reference": {"image": "x.png"}, "then": "nowhere"}}"#);

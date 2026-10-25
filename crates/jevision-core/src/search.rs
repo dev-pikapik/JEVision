@@ -73,6 +73,7 @@ pub fn test_keywords(flow: &Flow) -> String {
             expect,
             model,
             provider,
+            ..
         } = &r.compare
         {
             words.push(expect);

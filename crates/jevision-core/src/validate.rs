@@ -1590,6 +1590,32 @@ pub(crate) fn reference(block: &str, field: &str, r: &Reference, out: &mut Vec<I
                 .with("allowed", AI_PROVIDERS.join(", ")),
         );
     }
+    if let Compare::Meaning {
+        provider,
+        confidence,
+        ..
+    } = &r.compare
+    {
+        if !Compare::CONFIDENCE.contains(confidence) {
+            out.push(
+                Issue::error("flow.field.range")
+                    .with("block", block)
+                    .with("field", format!("{field}.confidence"))
+                    .with("min", "50%")
+                    .with("max", "99%"),
+            );
+        } else if *confidence != Compare::DEFAULT_CONFIDENCE
+            && !provider.is_empty()
+            && !provider.starts_with("jev")
+        {
+            // Only JEV answers with how sure it is; the others' yes or no can't be held to it.
+            out.push(
+                Issue::warning("flow.reference.confidenceNeedsProbability")
+                    .with("block", block)
+                    .with("field", format!("{field}.confidence")),
+            );
+        }
+    }
     if let Compare::Similar { threshold } = r.compare
         && !(threshold > 0.0 && threshold <= 1.0)
     {

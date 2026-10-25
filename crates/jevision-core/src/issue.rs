@@ -174,6 +174,12 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
         "flow.reference.providerNeedsMeaning" => {
             tr_in!(lang, "flow.reference.providerNeedsMeaning")
         }
+        "flow.reference.confidenceNeedsMeaning" => {
+            tr_in!(lang, "flow.reference.confidenceNeedsMeaning")
+        }
+        "flow.reference.confidenceNeedsProbability" => {
+            tr_in!(lang, "flow.reference.confidenceNeedsProbability")
+        }
         "flow.reference.thresholdNeedsSimilar" => {
             tr_in!(lang, "flow.reference.thresholdNeedsSimilar")
         }

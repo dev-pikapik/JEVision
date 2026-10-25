@@ -7,6 +7,13 @@ In Russian: [CHANGELOG.ru.md](CHANGELOG.ru.md).
 
 ## [Unreleased]
 
+### Added
+
+- Checks by meaning can require a confidence: with `"confidence": 0.9`, or **Confidence** in the
+  inspector, JEV must be at least 90% sure that the screen shows what is expected. The report
+  says how sure JEV was and what the check needed. Providers that answer only yes or no keep
+  their own answer, and the editor and the report say so.
+
 ## [1.0.0] - 2026-10-20
 
 The first release of JEVision: UI tests for any Mac app, drawn as flowcharts and run with the real

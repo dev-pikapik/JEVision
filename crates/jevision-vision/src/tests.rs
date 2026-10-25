@@ -35,6 +35,7 @@ fn question() -> Question<'static> {
         screenshot: &SHOT_PICTURE,
         reference: Some(&REFERENCE_PICTURE),
         model: "",
+        confidence: 0.5,
     }
 }
 
@@ -146,6 +147,7 @@ fn requests_carry_both_pictures_the_expectation_and_a_strict_answer_shape() {
         screenshot: &SHOT_PICTURE,
         reference: None,
         model: "",
+        confidence: 0.5,
     };
     let (_, body) = request(&config(Provider::Ollama, ""), &only_shot);
     assert_eq!(images(&body), [SHOT]);
@@ -208,10 +210,11 @@ fn keys_go_in_headers_only() {
 
 #[test]
 fn answers_of_every_provider_are_read() {
-    let read = |p, name| answer(p, &fixture(name)).unwrap();
+    let read = |p, name| answer(p, &fixture(name), 0.5).unwrap();
     assert_eq!(
         read(Provider::Anthropic, "anthropic.json"),
         Judgement {
+            probability: None,
             passed: true,
             reason: "The cart badge shows 2 items.".into(),
             usage: Usage {
@@ -223,6 +226,7 @@ fn answers_of_every_provider_are_read() {
     assert_eq!(
         read(Provider::OpenAi, "openai.json"),
         Judgement {
+            probability: None,
             passed: false,
             reason: "The cart is empty.".into(),
             usage: Usage {
@@ -240,6 +244,7 @@ fn answers_of_every_provider_are_read() {
     assert_eq!(
         read(Provider::LmStudio, "lmstudio.json"),
         Judgement {
+            probability: None,
             passed: true,
             reason: "The Save button is visible.".into(),
             usage: Usage {
@@ -265,6 +270,7 @@ fn answers_of_every_provider_are_read() {
     assert_eq!(
         read(Provider::Jev, "jev.json"),
         Judgement {
+            probability: Some(0.04),
             passed: false,
             reason: "JEV is 96% sure the screenshot does not meet the expectation.".into(),
             usage: Usage {
@@ -277,7 +283,7 @@ fn answers_of_every_provider_are_read() {
 
 #[test]
 fn refusals_and_unreadable_answers_are_errors() {
-    let err = |p, body: &str| answer(p, body).unwrap_err();
+    let err = |p, body: &str| answer(p, body, 0.5).unwrap_err();
     assert!(matches!(
         err(Provider::Anthropic, &fixture("anthropic-refusal.json")),
         VisionError::Refused { .. }
@@ -450,6 +456,7 @@ fn a_question_can_ask_another_model_of_the_same_provider() {
     let judgement = c
         .judge(&Question {
             model: " gpt-5 ",
+            confidence: 0.5,
             ..question()
         })
         .unwrap();
@@ -459,6 +466,7 @@ fn a_question_can_ask_another_model_of_the_same_provider() {
     assert_eq!(
         c.judge(&Question {
             model: "gpt-0",
+            confidence: 0.5,
             ..question()
         }),
         Err(VisionError::UnknownModel {
@@ -838,8 +846,46 @@ fn sent_body(request: &str) -> Value {
 }
 
 #[test]
+fn jev_is_held_to_the_confidence_asked_for() {
+    let body = |yes: f64| json!({ "answers": { "passed": { "noul": yes } } });
+    let judged = |yes, confidence| verdict_of(Provider::Jev, &body(yes), confidence).unwrap();
+
+    let short = judged(0.8, 0.9);
+    assert!(!short.passed);
+    assert_eq!(short.probability, Some(0.8));
+    assert_eq!(
+        short.reason,
+        "JEV is only 80% sure the screenshot meets the expectation."
+    );
+    let sure = judged(0.8, 0.75);
+    assert!(sure.passed);
+    assert_eq!(
+        sure.reason,
+        "JEV is 80% sure the screenshot meets the expectation."
+    );
+    // Exactly the confidence passes; just under it is not rounded up to look like a pass.
+    assert!(judged(0.9, 0.9).passed);
+    let under = judged(0.899, 0.9);
+    assert!(!under.passed && under.reason.contains("89%"), "{under:?}");
+    // Leaning to no reads as how sure it is of no.
+    assert!(
+        judged(0.3, 0.5)
+            .reason
+            .contains("70% sure the screenshot does not")
+    );
+    // The written verdicts of the other providers carry no probability.
+    let written = verdict_in(r#"{"passed": true, "reason": "Fine."}"#).unwrap();
+    assert_eq!(written.probability, None);
+}
+
+#[test]
 fn recorded_answers_of_cloudflare_are_read_from_their_wrapping() {
-    let judged = answer(Provider::JevCloudflare, &fixture("cloudflare-jev.json")).unwrap();
+    let judged = answer(
+        Provider::JevCloudflare,
+        &fixture("cloudflare-jev.json"),
+        0.5,
+    )
+    .unwrap();
     assert!(judged.passed && judged.reason.contains("72%"), "{judged:?}");
     assert_eq!(
         judged.usage,
@@ -870,7 +916,9 @@ fn recorded_answers_of_cloudflare_are_read_from_their_wrapping() {
     // Each route reads only its own shape: TypeSafe AI's answer is not wrapped, Cloudflare's is.
     let bad = |e| matches!(e, Err(VisionError::BadAnswer { .. }));
     for unwrapped in [fixture("jev.json"), fixture("jev-box.json")] {
-        assert!(bad(answer(Provider::JevCloudflare, &unwrapped).map(|_| ())));
+        assert!(bad(
+            answer(Provider::JevCloudflare, &unwrapped, 0.5).map(|_| ())
+        ));
         assert!(bad(located(
             Provider::JevCloudflare,
             &unwrapped,
@@ -882,10 +930,14 @@ fn recorded_answers_of_cloudflare_are_read_from_their_wrapping() {
         fixture("cloudflare-jev.json"),
         fixture("cloudflare-jev-box.json"),
     ] {
-        assert!(bad(answer(Provider::Jev, &wrapped).map(|_| ())));
+        assert!(bad(answer(Provider::Jev, &wrapped, 0.5).map(|_| ())));
         assert!(bad(located(Provider::Jev, &wrapped, (1.0, 1.0)).map(|_| ())));
     }
-    assert!(!answer(Provider::Jev, &fixture("jev.json")).unwrap().passed);
+    assert!(
+        !answer(Provider::Jev, &fixture("jev.json"), 0.5)
+            .unwrap()
+            .passed
+    );
     assert!(
         located(Provider::Jev, &fixture("jev-box.json"), (1.0, 1.0))
             .unwrap()
@@ -1019,7 +1071,7 @@ fn a_cut_answer_of_cloudflare_is_an_error_not_a_verdict() {
     for cut in 0..body.len() {
         assert!(
             matches!(
-                answer(Provider::JevCloudflare, &body[..cut]),
+                answer(Provider::JevCloudflare, &body[..cut], 0.5),
                 Err(VisionError::BadAnswer { .. })
             ),
             "cut at {cut}"
@@ -1225,6 +1277,7 @@ fn real_jev_through_cloudflare() {
             screenshot: &picture,
             reference: None,
             model: "",
+            confidence: 0.5,
         });
         eprintln!("{:.1}s: {judgement:?}", began.elapsed().as_secs_f32());
         judgement
@@ -1263,6 +1316,7 @@ fn real_jev_through_cloudflare() {
                 screenshot: &picture,
                 reference: None,
                 model: "",
+                confidence: 0.5,
             })
             .unwrap_err()
     };

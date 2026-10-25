@@ -91,6 +91,7 @@
     <tr><td><code>expect</code></td><td>No</td><td>Only with <code>"meaning"</code>: what the screen should show, in plain words.</td></tr>
     <tr><td><code>provider</code></td><td>No</td><td>Only with <code>"meaning"</code>: the AI provider that checks this block, by one of the ids in <a href="#models">AI models</a>, such as <code>"anthropic"</code>. Default: see <a href="#which-ai">Which AI answers</a>.</td></tr>
     <tr><td><code>model</code></td><td>No</td><td>Only with <code>"meaning"</code>: the model that checks this block.</td></tr>
+    <tr><td><code>confidence</code></td><td>No</td><td>Only with <code>"meaning"</code>: how sure the model must be that the screen shows it, from <code>0.5</code> to <code>0.99</code>. Only JEV says how sure it is; other providers answer yes or no, and their answer counts as it is. Default: <code>0.5</code>, where the model's own yes or no decides.</td></tr>
     <tr><td><code>area</code></td><td>No</td><td>The part of the window to compare, an <a href="writing-tests.html#rect">area</a>. Default: the whole window.</td></tr>
     <tr><td><code>ignore</code></td><td>No</td><td>List of areas left out of the comparison, such as a clock or a counter.</td></tr>
     <tr><td><code>hide</code></td><td>No</td><td>List of areas that must not appear anywhere: left out of the comparison, covered in every saved screenshot and covered before a screenshot is sent to an AI model.</td></tr>
@@ -161,7 +162,8 @@
   <li>With a picture and no <code>expect</code>, the model decides whether the screen means the same as the picture.</li>
   <li><code>check</code>, <code>waitFor</code> and <code>if</code> all accept a check by meaning.</li>
   <li><code>area</code>, <code>ignore</code> and <code>hide</code> still apply: only the compared part of the screen is sent, with ignored and hidden parts covered.</li>
-  <li>The report keeps the provider, the model and its explanation for each check by meaning.</li>
+  <li>JEV answers how sure it is that the screen shows what is expected. By default the check passes when JEV is more sure of yes than of no; with <code>confidence</code>, such as <code>0.9</code>, it passes only when JEV is at least that sure. In the app, set it with <strong>Confidence</strong> in the inspector. Other providers answer only yes or no, so the confidence doesn't apply to them: the editor warns about it, and the report says their own answer counted.</li>
+  <li>The report keeps the provider, the model and its explanation for each check by meaning, and with a confidence, the share the check needed.</li>
 </ul>
 
 <h2 id="models">AI models</h2>
