@@ -83,7 +83,7 @@ struct FilePathField: View {
   @State private var relinks = 0
 
   private var url: URL { RelativePath.resolve(path, in: context.folder) }
-  private var isWebAddress: Bool { path.hasPrefix("http://") || path.hasPrefix("https://") }
+  private var isLink: Bool { addressIsLink(address: path) }
   /// A path with a placeholder names its file only once a run fills it in.
   private var isPlaceholder: Bool { path.contains("${") }
 
@@ -132,7 +132,7 @@ struct FilePathField: View {
     case .some:
       EmptyView()
     case nil:
-      if !path.isEmpty, !isWebAddress, !isPlaceholder, path.first != "/" {
+      if !path.isEmpty, !isLink, !isPlaceholder, path.first != "/" {
         if AppearanceImage.url(path, in: context.folder, dark: false, variants: appearanceVariants) == nil {
           Warning(text: Text("There’s no such file next to the test."))
         } else if let root = context.projectRoot, !RelativePath.isInside(url, folder: root) {
@@ -150,7 +150,7 @@ struct FilePathField: View {
   }
 
   private func choose() {
-    guard let chosen = pick(from: path.isEmpty || isWebAddress || isPlaceholder ? context.folder : url.deletingLastPathComponent())
+    guard let chosen = pick(from: path.isEmpty || isLink || isPlaceholder ? context.folder : url.deletingLastPathComponent())
     else { return }
     let named = context.document.reference(to: chosen)
     path = named.reference

@@ -75,3 +75,10 @@ pub fn simulated_apps(device: String) -> Result<Vec<SimulatedApp>, SimulatorErro
         })
         .collect())
 }
+
+/// Whether `address`, a place an Open File block opens, is a link, such as a web address or
+/// `myapp://inbox`, and not a file.
+#[uniffi::export]
+pub fn address_is_link(address: String) -> bool {
+    jevision_core::is_link(&address)
+}

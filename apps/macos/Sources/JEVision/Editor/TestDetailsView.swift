@@ -31,12 +31,7 @@ struct TestDetailsView: View {
             prompt: Text("What must be true before it starts"), axis: .vertical
           ) { Text("Preconditions") }
           .lineLimit(1...4)
-          LabeledContent("App") {
-            AppPicker(
-              bundleID: binding(flow.app.isEmpty ? nil : flow.app, "app") { $0.app = $1 ?? "" },
-              noneTitle: Text("Choose App"))
-          }
-          IssueList(issues: issues.filter { $0.param("field") == "app" })
+          TestTargetFields(document: document, flow: flow, issues: issues)
         }
         missingSection(flow)
         Section {
@@ -260,7 +255,7 @@ struct TestDetailsView: View {
 
 /// One line of text saved when the field is left or Return is pressed, not on every key, so a
 /// half-typed value is never checked or saved.
-private struct CommitField: View {
+struct CommitField: View {
   let title: LocalizedStringKey
   let prompt: Text
   let value: String

@@ -2575,6 +2575,16 @@
         }
       }
     },
+    "A built .app to install on the device before the test, relative to the test file. Open App with Start Fresh installs it again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Собранное приложение .app, которое ставится на устройство перед тестом; путь — от файла теста. «Открыть приложение» с флажком «Запустить с нуля» ставит его заново."
+          }
+        }
+      }
+    },
     "A change counts at once, even for a test that is running." : {
       "localizations" : {
         "ru" : {
@@ -2791,6 +2801,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Секрет или значение, которое хранится вне теста"
+          }
+        }
+      }
+    },
+    "A simulated iPhone or iPad runs in Simulator, which comes with Xcode." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Симулированный iPhone или iPad работает в приложении Simulator, оно входит в Xcode."
           }
         }
       }
@@ -5495,6 +5515,16 @@
         }
       }
     },
+    "Build" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сборка"
+          }
+        }
+      }
+    },
     "Button" : {
       "localizations" : {
         "ru" : {
@@ -6591,6 +6621,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сначала выберите модель ИИ в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "Choose an app built for Simulator" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите приложение, собранное для Simulator"
           }
         }
       }
@@ -14932,6 +14972,26 @@
         }
       }
     },
+    "Not on %@ yet. Give a build to install." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На «%@» его пока нет. Укажите сборку для установки."
+          }
+        }
+      }
+    },
+    "Not on %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На «%@» его нет."
+          }
+        }
+      }
+    },
     "Not reset: passwords in the Keychain, the list of recent documents and what the app keeps on its servers or in iCloud. Apps from the App Store and others in the macOS sandbox keep their data where macOS puts it, so for them “Start Fresh” only leaves out the windows from last time. The setting is saved in %@ in the project folder." : {
       "localizations" : {
         "ru" : {
@@ -19876,6 +19936,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запускать после"
+          }
+        }
+      }
+    },
+    "Runs On" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Где запускать"
           }
         }
       }
