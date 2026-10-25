@@ -1874,6 +1874,7 @@ dependencies = [
  "jevision-l10n",
  "jevision-vision",
  "libc",
+ "plist",
  "png",
  "rusqlite",
  "serde",

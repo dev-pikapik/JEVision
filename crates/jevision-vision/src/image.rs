@@ -166,8 +166,75 @@ impl Image {
         self.resized(scale(self.width), scale(self.height))
     }
 
+    /// Where a scaled copy of `part` shows in this picture, in fractions of it: the screen of a
+    /// simulated device in the window that shows it, with the frame and title bar around it.
+    /// `None` when no place looks like `part`, or `part` is too plain to tell where it is.
+    pub fn find_scaled(&self, part: &Image) -> Option<Rect> {
+        let aspect = f64::from(part.height) / f64::from(part.width);
+        let fine = Grid::of(part, 48, aspect);
+        if fine.spread() < MIN_SPREAD {
+            return None;
+        }
+        let coarse = Grid::of(part, 12, aspect);
+        let sums = Sums::of(self);
+        let (w, h) = (f64::from(self.width), f64::from(self.height));
+        let fits = |x: f64, y: f64, width: f64| {
+            x >= 0.0 && y >= 0.0 && width >= 1.0 && x + width <= w && y + width * aspect <= h
+        };
+        // Every place a fiftieth of the window apart, from the widest copy down to a third of
+        // the window: the screen fills most of a simulator window.
+        let step = w / 50.0;
+        let mut best: Option<(f64, f64, f64, f64)> = None;
+        let mut width = w.min(h / aspect);
+        while width >= w / 3.0 {
+            let mut y = 0.0;
+            while fits(0.0, y, width) {
+                let mut x = 0.0;
+                while fits(x, y, width) {
+                    let score = sums.difference(&coarse, x, y, width);
+                    if best.is_none_or(|(s, ..)| score < s) {
+                        best = Some((score, x, y, width));
+                    }
+                    x += step;
+                }
+                y += step;
+            }
+            width -= step;
+        }
+        // Then closer, in ever smaller steps, down to a quarter of a pixel.
+        let (_, mut x, mut y, mut width) = best?;
+        let mut score = sums.difference(&fine, x, y, width);
+        let mut step = step;
+        while step >= 0.25 {
+            let mut moved = false;
+            for dw in [-step, 0.0, step] {
+                for dx in [-step, 0.0, step] {
+                    for dy in [-step, 0.0, step] {
+                        let (cx, cy, cw) = (x + dx, y + dy, width + dw);
+                        if !fits(cx, cy, cw) {
+                            continue;
+                        }
+                        let s = sums.difference(&fine, cx, cy, cw);
+                        if s < score {
+                            (score, x, y, width, moved) = (s, cx, cy, cw, true);
+                        }
+                    }
+                }
+            }
+            if !moved {
+                step /= 2.0;
+            }
+        }
+        (score <= MAX_DIFFERENCE).then(|| Rect {
+            x: x / w,
+            y: y / h,
+            width: width / w,
+            height: width * aspect / h,
+        })
+    }
+
     /// Box-filtered copy at another size.
-    pub(crate) fn resized(&self, width: u32, height: u32) -> Image {
+    pub fn resized(&self, width: u32, height: u32) -> Image {
         let span = |t: u32, target: u32, source: u32| {
             let from = u64::from(t) * u64::from(source) / u64::from(target);
             let to = (u64::from(t + 1) * u64::from(source) / u64::from(target)).max(from + 1);
@@ -211,6 +278,106 @@ impl Image {
 
     fn at(&self, x: u32, y: u32) -> usize {
         (y as usize * self.width as usize + x as usize) * 4
+    }
+}
+
+/// Least spread of brightness, on a 0–255 scale, of a picture [`Image::find_scaled`] can place:
+/// a plain one, such as a screen still black while the device starts, looks alike anywhere.
+const MIN_SPREAD: f64 = 6.0;
+
+/// Largest mean difference in brightness, on a 0–255 scale, between a picture and the place
+/// [`Image::find_scaled`] puts it: scaling softens edges, the rest is the same.
+const MAX_DIFFERENCE: f64 = 12.0;
+
+fn brightness(rgba: &[u8]) -> f64 {
+    0.299 * f64::from(rgba[0]) + 0.587 * f64::from(rgba[1]) + 0.114 * f64::from(rgba[2])
+}
+
+/// A picture shrunk to a few cells across, as brightness.
+struct Grid {
+    columns: usize,
+    rows: usize,
+    /// Height over width of the picture.
+    aspect: f64,
+    cells: Vec<f64>,
+}
+
+impl Grid {
+    fn of(image: &Image, columns: u32, aspect: f64) -> Self {
+        let rows = ((f64::from(columns) * aspect).round() as u32).max(1);
+        let small = image.resized(columns, rows);
+        Self {
+            columns: columns as usize,
+            rows: rows as usize,
+            aspect,
+            cells: small
+                .rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|p| brightness(p))
+                .collect(),
+        }
+    }
+
+    /// Mean distance of the cells from their mean.
+    fn spread(&self) -> f64 {
+        let n = self.cells.len() as f64;
+        let mean = self.cells.iter().sum::<f64>() / n;
+        self.cells.iter().map(|c| (c - mean).abs()).sum::<f64>() / n
+    }
+}
+
+/// Running sums of brightness, for the mean of any box in constant time.
+struct Sums {
+    width: usize,
+    height: usize,
+    sums: Vec<f64>,
+}
+
+impl Sums {
+    fn of(image: &Image) -> Self {
+        let (width, height) = (image.width as usize, image.height as usize);
+        let mut sums = vec![0.0; (width + 1) * (height + 1)];
+        for y in 0..height {
+            let mut row = 0.0;
+            for x in 0..width {
+                row += brightness(&image.rgba[(y * width + x) * 4..]);
+                sums[(y + 1) * (width + 1) + x + 1] = sums[y * (width + 1) + x + 1] + row;
+            }
+        }
+        Self {
+            width,
+            height,
+            sums,
+        }
+    }
+
+    fn mean(&self, x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
+        let edge = |v: f64, size: usize| (v.round().max(0.0) as usize).min(size);
+        let (x0, y0) = (edge(x0, self.width), edge(y0, self.height));
+        let x1 = edge(x1, self.width).max(x0 + 1).min(self.width);
+        let y1 = edge(y1, self.height).max(y0 + 1).min(self.height);
+        let (x0, y0) = (x0.min(x1 - 1), y0.min(y1 - 1));
+        let at = |x: usize, y: usize| self.sums[y * (self.width + 1) + x];
+        (at(x1, y1) - at(x0, y1) - at(x1, y0) + at(x0, y0)) / ((x1 - x0) * (y1 - y0)) as f64
+    }
+
+    /// Mean difference between `grid` and the box `width` wide at `x`, `y` cut into as many
+    /// cells.
+    fn difference(&self, grid: &Grid, x: f64, y: f64, width: f64) -> f64 {
+        let cell_width = width / grid.columns as f64;
+        let cell_height = width * grid.aspect / grid.rows as f64;
+        let mut total = 0.0;
+        for row in 0..grid.rows {
+            let top = y + row as f64 * cell_height;
+            for column in 0..grid.columns {
+                let left = x + column as f64 * cell_width;
+                let seen = self.mean(left, top, left + cell_width, top + cell_height);
+                total += (seen - grid.cells[row * grid.columns + column]).abs();
+            }
+        }
+        total / grid.cells.len() as f64
     }
 }
 
@@ -383,5 +550,67 @@ mod tests {
         let tall = solid(2, 4, [10, 20, 30]).encode().unwrap();
         assert_eq!(picture_diff(&before.encode().unwrap(), &tall), None);
         assert_eq!(picture_diff(b"not a picture", &tall), None);
+    }
+
+    /// A screen of coloured tiles, the same every time.
+    fn tiles(width: u32, height: u32, seed: u32) -> Image {
+        let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+        for y in 0..height {
+            for x in 0..width {
+                let tile = (x / 12).wrapping_mul(31) ^ (y / 12).wrapping_mul(17) ^ seed;
+                let v = tile.wrapping_mul(2_654_435_761) >> 8;
+                rgba.extend([v as u8, (v >> 8) as u8, (v >> 16) as u8, 255]);
+            }
+        }
+        Image {
+            width,
+            height,
+            rgba,
+        }
+    }
+
+    /// A simulator window: a title bar, a dark frame and `screen` at `width` pixels wide
+    /// placed at `x`, `y`.
+    fn window(screen: &Image, x: u32, y: u32, width: u32) -> Image {
+        let mut w = solid(width + 2 * x, 2 * y + width * 22 / 10, [28, 28, 30]);
+        for p in 0..(w.width * 30) as usize {
+            w.rgba[p * 4..p * 4 + 3].copy_from_slice(&[236, 236, 236]);
+        }
+        let height = width * screen.height / screen.width;
+        let scaled = screen.resized(width, height);
+        for row in 0..height {
+            let from = (row * width * 4) as usize;
+            let to = w.at(x, y + row);
+            w.rgba[to..to + (width * 4) as usize]
+                .copy_from_slice(&scaled.rgba[from..from + (width * 4) as usize]);
+        }
+        w
+    }
+
+    #[test]
+    fn a_device_screen_is_found_in_its_window_at_any_zoom() {
+        let screen = tiles(390, 844, 7);
+        for (x, y, width) in [(24, 64, 300), (40, 90, 195), (12, 40, 390)] {
+            let w = window(&screen, x, y, width);
+            let found = w.find_scaled(&screen).expect("the screen is in the window");
+            let (ww, wh) = (f64::from(w.width), f64::from(w.height));
+            let off = |a: f64, b: u32| (a - f64::from(b)).abs();
+            assert!(
+                off(found.x * ww, x) <= 1.0,
+                "x of {found:?} at zoom {width}"
+            );
+            assert!(
+                off(found.y * wh, y) <= 1.0,
+                "y of {found:?} at zoom {width}"
+            );
+            assert!(off(found.width * ww, width) <= 1.5, "width of {found:?}");
+        }
+    }
+
+    #[test]
+    fn plain_or_other_screens_are_not_placed() {
+        let w = window(&tiles(390, 844, 7), 24, 64, 300);
+        assert_eq!(w.find_scaled(&solid(390, 844, [0, 0, 0])), None);
+        assert_eq!(w.find_scaled(&tiles(390, 844, 99)), None);
     }
 }

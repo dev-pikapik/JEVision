@@ -471,6 +471,7 @@ fn run_with_seen(
     let secrets = secrets();
     let runner = Runner {
         hands,
+        simctl: &jevision_runner::Xcrun,
         secrets: &secrets,
         events: &sink,
         control,
@@ -1860,6 +1861,7 @@ fn breakpoints_step_mode_and_user_input_pause() {
     let secrets = secrets();
     let runner = Runner {
         hands: &hands,
+        simctl: &jevision_runner::Xcrun,
         secrets: &secrets,
         events: &sink,
         control: control.clone(),
@@ -2917,6 +2919,7 @@ fn run_with_providers(
     let secrets = secrets();
     let runner = Runner {
         hands,
+        simctl: &jevision_runner::Xcrun,
         secrets: &secrets,
         events: &|_: &Event| {},
         control: RunControl::new(),
@@ -3259,6 +3262,7 @@ fn a_pause_shows_the_variables_of_the_block_ahead() {
     let secrets = secrets();
     let runner = Runner {
         hands: &hands,
+        simctl: &jevision_runner::Xcrun,
         secrets: &secrets,
         events: &sink,
         control: control.clone(),
@@ -3754,6 +3758,7 @@ fn a_forced_ai_answers_every_check_whatever_the_project_and_the_block_choose() {
         let secrets = secrets();
         let runner = Runner {
             hands: &hands,
+            simctl: &jevision_runner::Xcrun,
             secrets: &secrets,
             events: &|_: &Event| {},
             control: RunControl::new(),
@@ -4759,6 +4764,7 @@ fn run_located_logged(
     let secrets = secrets();
     let runner = Runner {
         hands,
+        simctl: &jevision_runner::Xcrun,
         secrets: &secrets,
         events: &|_: &Event| {},
         control: RunControl::new(),
@@ -4955,6 +4961,7 @@ fn finding_by_description_needs_jev_and_a_cloud_service_allowed() {
     let locator = Locator::new(None);
     let runner = Runner {
         hands: &hands,
+        simctl: &jevision_runner::Xcrun,
         secrets: &secrets,
         events: &|_: &Event| {},
         control: RunControl::new(),

@@ -14,6 +14,7 @@ jevision-core.workspace = true
 jevision-l10n.workspace = true
 jevision-vision.workspace = true
 libc = "0.2"
+plist = { version = "1.10", default-features = false }
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde.workspace = true
 serde_json = { workspace = true, features = ["raw_value"] }
