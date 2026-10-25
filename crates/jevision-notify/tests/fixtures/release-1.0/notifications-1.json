@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "$schema": "https://example.test/notifications.schema.json",
+  "minVersion": "0.1.0",
+  "when": "changed",
+  "unattendedOnly": true,
+  "slack": true,
+  "telegram": {
+    "chat": "-1001234567890",
+    "label": { "team": "QA" }
+  },
+  "email": {
+    "server": "smtp.example.test",
+    "port": 587,
+    "security": "startTls",
+    "user": "tests@example.test",
+    "from": "tests@example.test",
+    "to": ["qa@example.test"]
+  },
+  "review": { "labels": ["nightly", "release"] }
+}

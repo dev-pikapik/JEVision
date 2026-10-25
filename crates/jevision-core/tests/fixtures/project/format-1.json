@@ -1,0 +1,29 @@
+{
+  "format": 1,
+  "$schema": "https://example.test/schemas/project.schema.json",
+  "minVersion": "0.1.0",
+  "retries": 1,
+  "localOnly": true,
+  "cleanHome": true,
+  "retention": {
+    "maxAgeDays": 90,
+    "maxRunsPerTest": 30,
+    "mediaMaxAgeDays": 14,
+    "maxTotalMb": 512,
+    "policy": {"reviewed": true}
+  },
+  "hide": [
+    {"x": 0.1, "y": 0.2, "width": 0.25, "height": 0.3, "label": "Account summary"}
+  ],
+  "ai": {
+    "screen": {"provider": "ollama", "model": "llava", "displayName": "Local vision"},
+    "routing": {"policy": "local"}
+  },
+  "quarantine": [
+    {"test": "smoke/checkout.flow.json", "reason": "Pending triage", "until": "2099-12-31", "tracking": {"issue": "QA-42"}}
+  ],
+  "runModes": [
+    {"folder": "smoke", "run": "parallel", "limit": 2, "caption": "Smoke tests"}
+  ],
+  "presentation": {"color": "blue"}
+}

@@ -1,0 +1,15 @@
+{
+  "tests": {
+    "login/sign-in.flow.json": {
+      "run": "20261019-080000-sign-in",
+      "verdict": "failed",
+      "triage": { "label": "login" }
+    },
+    "logout.flow.json": {
+      "run": "20261019-080100-logout",
+      "verdict": "passed",
+      "reviewed": true
+    }
+  },
+  "cursor": { "generation": 1 }
+}

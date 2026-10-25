@@ -1,0 +1,45 @@
+{
+  "format": 1,
+  "test": "Sign in",
+  "file": "login/sign-in.flow.json",
+  "app": "com.example.TestApp",
+  "startedAt": "2026-01-02T09:30:00Z",
+  "durationMs": 1250,
+  "verdict": "failed",
+  "flaky": false,
+  "archiveDetails": { "label": "First saved run" },
+  "attempts": [
+    {
+      "number": 1,
+      "verdict": "failed",
+      "durationMs": 1250,
+      "failure": {
+        "code": "run.waitFor.timeout",
+        "params": { "block": "inbox", "target": "Inbox", "seconds": "1" }
+      },
+      "steps": [
+        {
+          "seq": 1,
+          "test": "login/sign-in.flow.json",
+          "block": "pause",
+          "type": "pause",
+          "status": "passed",
+          "durationMs": 250
+        },
+        {
+          "seq": 2,
+          "test": "login/sign-in.flow.json",
+          "block": "inbox",
+          "type": "waitFor",
+          "status": "failed",
+          "durationMs": 1000,
+          "before": "shots/2-before.png",
+          "failure": {
+            "code": "run.waitFor.timeout",
+            "params": { "block": "inbox", "target": "Inbox", "seconds": "1" }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "checkedAt": 29000000,
+  "runs": [
+    {
+      "schedule": "Morning",
+      "startedAtMs": 1740000000000,
+      "durationMs": 1200,
+      "outcome": { "result": "finished", "passed": 2, "failed": 1 }
+    }
+  ]
+}

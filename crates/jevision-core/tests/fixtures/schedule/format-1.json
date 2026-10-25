@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "$schema": "https://example.test/schemas/schedule.schema.json",
+  "minVersion": "0.1.0",
+  "schedules": [
+    {
+      "name": "Smoke",
+      "tests": {"files": ["smoke/checkout.flow.json", "smoke/profile.flow.json"]},
+      "repeat": {"days": ["mon", "fri"]},
+      "at": "09:15",
+      "environment": "staging",
+      "video": "on-failure",
+      "owner": {"team": "desktop-qa"}
+    }
+  ],
+  "presentation": {"timeLabel": "Local wall time"}
+}

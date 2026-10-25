@@ -119,6 +119,34 @@ struct ThroughAppTests {
     #expect(try Data(contentsOf: file) == legacy)
   }
 
+  @Test func savedLegacyAndVersionOneBridgeMessagesKeepTheirMeaning() throws {
+    func fixture(_ name: String) throws -> Data {
+      let file = try #require(Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures/Contracts"))
+      return try Data(contentsOf: file)
+    }
+    let decoder = JSONDecoder()
+    let encoder = JSONEncoder()
+    let legacy = try decoder.decode(CLIBridge.Request.self, from: fixture("bridge-request-legacy"))
+    let current = try decoder.decode(CLIBridge.Request.self, from: fixture("bridge-request-1"))
+    #expect(legacy == current)
+    #expect(legacy.format == 1)
+    for request in [legacy, current] {
+      // Encoding is in memory only. The fixture's command, directory and environment are
+      // inert data, and optional unfamiliar members are outside the typed message's meaning.
+      let encoded = try encoder.encode(request)
+      let readAgain = try decoder.decode(CLIBridge.Request.self, from: encoded)
+      #expect(readAgain == request)
+      let fields = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+      #expect(fields["format"] as? Int == 1)
+      #expect(fields["arguments"] as? [String] == ["version", "--json"])
+      #expect(fields["directory"] as? String == "/contract/project with spaces")
+      #expect(fields["environment"] as? [String: String] == ["LANG": "en_US.UTF-8", "CONTRACT_VALUE": "literal value", "EMPTY": ""])
+    }
+    let result = try decoder.decode(CLIBridge.Result.self, from: fixture("bridge-result-1"))
+    #expect(result.format == 1 && result.exitStatus == 137)
+    #expect(try decoder.decode(CLIBridge.Result.self, from: encoder.encode(result)) == result)
+  }
+
   @Test func newerRequestRequirementsAreCheckedBeforeThePayloadAndBeforeStartingAnything() throws {
     let directory = try scratch()
     let folder = try bridge("touch ran", in: directory, environment: ["SECRET": "private-demo-key"])

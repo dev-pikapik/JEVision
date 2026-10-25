@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "$schema": "https://example.test/schemas/environments.schema.json",
+  "minVersion": "0.1.0",
+  "default": "staging",
+  "environments": {
+    "staging": {
+      "BASE_URL": "https://staging.example.test",
+      "TENANT": "demo"
+    },
+    "production": {
+      "BASE_URL": "https://production.example.test",
+      "TENANT": "public"
+    }
+  },
+  "presentation": {
+    "collapsed": ["production"]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "format": 1,
+  "id": "org.example.greeting",
+  "name": "Greeting",
+  "description": "Types a supplied greeting.",
+  "icon": "text.bubble",
+  "version": "1.2.0",
+  "author": "packages.example.test",
+  "license": "MIT",
+  "minVersion": "0.1.0",
+  "inputs": [
+    {"name": "message", "label": "Message", "default": "Hello fixture"}
+  ]
+}

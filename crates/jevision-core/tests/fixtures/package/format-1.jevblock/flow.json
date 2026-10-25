@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "name": "Greeting",
+  "app": "org.example.Editor",
+  "start": "type",
+  "blocks": {
+    "type": {"type": "type", "text": "${input.message}"}
+  }
+}

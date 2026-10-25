@@ -436,6 +436,104 @@ fn newer_protocol_versions_get_the_newest_known() {
     );
 }
 
+/// Keep argument names and validation keywords, while letting schema prose change without
+/// changing the release contract. Names inside a properties map are data, not keywords.
+fn schema_contract(schema: &Value) -> Value {
+    match schema {
+        Value::Object(fields) => Value::Object(
+            fields
+                .iter()
+                .filter_map(|(key, value)| {
+                    let kept = match key.as_str() {
+                        "description" | "title" | "$comment" | "examples" => return None,
+                        "properties" | "patternProperties" | "$defs" | "definitions"
+                        | "dependentSchemas" => Value::Object(
+                            value
+                                .as_object()
+                                .expect("a schema map is an object")
+                                .iter()
+                                .map(|(name, schema)| (name.clone(), schema_contract(schema)))
+                                .collect(),
+                        ),
+                        // These values are literal data; a member named description or title
+                        // inside one still affects which input the schema accepts.
+                        "const" | "enum" | "default" => value.clone(),
+                        _ => schema_contract(value),
+                    };
+                    Some((key.clone(), kept))
+                })
+                .collect(),
+        ),
+        Value::Array(values) => Value::Array(values.iter().map(schema_contract).collect()),
+        _ => schema.clone(),
+    }
+}
+
+#[test]
+fn schema_contract_keeps_argument_names_and_literal_values_but_not_prose() {
+    let original = json!({
+        "type": "object", "description": "First wording", "title": "A tool", "examples": [{}],
+        "properties": {
+            "description": { "type": "string", "description": "A description argument", "minLength": 1 },
+            "title": { "type": "string", "enum": ["one", "two"] },
+            "details": { "const": { "description": "must stay", "title": "literal" } },
+        },
+        "required": ["description"], "additionalProperties": false,
+    });
+    let expected = json!({
+        "type": "object",
+        "properties": {
+            "description": { "type": "string", "minLength": 1 },
+            "title": { "type": "string", "enum": ["one", "two"] },
+            "details": { "const": { "description": "must stay", "title": "literal" } },
+        },
+        "required": ["description"], "additionalProperties": false,
+    });
+    assert_eq!(schema_contract(&original), expected);
+    let mut reworded = original.clone();
+    reworded["description"] = json!("New wording");
+    reworded["properties"]["description"]["description"] = json!("New argument wording");
+    assert_eq!(schema_contract(&reworded), expected);
+    reworded["properties"]["description"]["type"] = json!("integer");
+    assert_ne!(schema_contract(&reworded), expected);
+}
+
+#[test]
+fn served_tool_inputs_and_annotations_match_the_release_1_contract() {
+    let (_project, _, server) = setup();
+    let reply = server
+        .handle(r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#)
+        .unwrap();
+    let reply: Value = serde_json::from_str(&reply).unwrap();
+    let tools = reply["result"]["tools"].as_array().unwrap();
+    let mut actual = serde_json::Map::new();
+    for tool in tools {
+        let name = tool["name"].as_str().unwrap();
+        let mut annotations = tool["annotations"].as_object().unwrap().clone();
+        annotations.remove("title");
+        assert!(
+            actual
+                .insert(
+                    name.to_owned(),
+                    json!({
+                        "inputSchema": schema_contract(&tool["inputSchema"]),
+                        "annotations": annotations,
+                    }),
+                )
+                .is_none(),
+            "duplicate tool {name}"
+        );
+    }
+    // This literal baseline was recorded from the signed 1.0 helper's tools/list response.
+    // It is never rebuilt from the current definitions while the test runs.
+    let expected: Value = serde_json::from_str(include_str!(
+        "../../tests/fixtures/release-1.0/mcp-tools.json"
+    ))
+    .unwrap();
+    assert_eq!(tools.len(), 15);
+    assert_eq!(Value::Object(actual), expected);
+}
+
 #[test]
 fn write_test_explains_what_is_wrong_and_saves_nothing() {
     let (project, _, server) = setup();

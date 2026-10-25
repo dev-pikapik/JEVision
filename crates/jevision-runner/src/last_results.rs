@@ -360,6 +360,72 @@ mod tests {
     }
 
     #[test]
+    fn saved_last_result_versions_preserve_metadata_when_recording_a_transition() {
+        for (name, text, same_run_before) in [
+            (
+                "legacy",
+                include_str!("../tests/fixtures/last-results/legacy.json"),
+                None,
+            ),
+            (
+                "format-1",
+                include_str!("../tests/fixtures/last-results/format-1.json"),
+                Some(Verdict::Passed),
+            ),
+        ] {
+            let project = project(&format!("fixture-{name}"));
+            let file = project.join(LAST_RESULTS_FILE);
+            fs::write(&file, text).unwrap();
+            let original: Value = serde_json::from_str(text).unwrap();
+            let same = run(
+                &project,
+                "20261019-080000-sign-in",
+                "login/sign-in.flow.json",
+                "failed",
+            );
+            assert_eq!(verdict_before(&project, &same), same_run_before);
+            let next = run(
+                &project,
+                "20261019-090000-sign-in",
+                "login/sign-in.flow.json",
+                "passed",
+            );
+            assert_eq!(verdict_before(&project, &next), Some(Verdict::Failed));
+            assert_eq!(fs::read_to_string(&file).unwrap(), text, "reading {name}");
+
+            record(&project, &next).unwrap();
+            let saved: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+            assert_eq!(saved["format"], LAST_RESULTS_FORMAT);
+            let current = &saved["tests"]["login/sign-in.flow.json"];
+            assert_eq!(current["run"], "20261019-090000-sign-in");
+            assert_eq!(current["verdict"], "passed");
+            assert_eq!(current["before"], "failed");
+            assert_eq!(
+                current["triage"],
+                original["tests"]["login/sign-in.flow.json"]["triage"]
+            );
+            assert_eq!(
+                saved["tests"]["logout.flow.json"],
+                original["tests"]["logout.flow.json"]
+            );
+            for (key, value) in original.as_object().unwrap() {
+                if !matches!(key.as_str(), "format" | "tests") {
+                    assert_eq!(&saved[key], value, "{name}: {key}");
+                }
+            }
+            assert_eq!(verdict_before(&project, &next), Some(Verdict::Failed));
+            let later = run(
+                &project,
+                "20261019-100000-sign-in",
+                "login/sign-in.flow.json",
+                "passed",
+            );
+            assert_eq!(verdict_before(&project, &later), Some(Verdict::Passed));
+            fs::remove_dir_all(project).unwrap();
+        }
+    }
+
+    #[test]
     fn a_run_waits_for_another_program_changing_the_file() {
         use std::io::{BufRead, BufReader, Write};
         use std::process::{Command, Stdio};

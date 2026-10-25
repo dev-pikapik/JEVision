@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/schedule-history.schema.json",
+  "minVersion": "1.0.0",
+  "checkedAt": 29000000,
+  "runs": [
+    {
+      "schedule": "Morning",
+      "startedAtMs": 1740000000000,
+      "durationMs": 1200,
+      "outcome": {
+        "result": "finished",
+        "passed": 2,
+        "failed": 1,
+        "reportIndex": { "names": ["sign-in", "checkout"] }
+      },
+      "hostDetails": { "name": "Test Mac", "labels": [null, "local"] }
+    },
+    {
+      "schedule": "Evening",
+      "startedAtMs": 1740000060000,
+      "durationMs": 0,
+      "outcome": { "result": "skipped", "reason": "screenLocked", "retry": false }
+    },
+    {
+      "schedule": "Weekend",
+      "startedAtMs": 1740000120000,
+      "durationMs": 0,
+      "outcome": { "result": "error", "message": "Environment is unavailable." }
+    }
+  ],
+  "cursorDetails": { "source": "local", "generation": 3 }
+}

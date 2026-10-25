@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "$schema": "https://example.test/schemas/package-lock.schema.json",
+  "minVersion": "0.1.0",
+  "sources": {
+    "org.example.greeting": "https://packages.example.test/greeting.jevblock.zip"
+  },
+  "versions": {
+    "org.example.greeting": "1.2.0"
+  },
+  "provenance": {
+    "org.example.greeting": {
+      "publisher": "packages.example.test",
+      "files": {
+        "flow.json": {"sha256": "d0265e0a16888184df30e9b70811d970df7ddf74630bd454c760c222529d762e"}
+      }
+    }
+  }
+}

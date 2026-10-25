@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "$schema": "https://example.test/last-results.schema.json",
+  "minVersion": "0.1.0+cache",
+  "tests": {
+    "login/sign-in.flow.json": {
+      "run": "20261019-080000-sign-in",
+      "verdict": "failed",
+      "before": "passed",
+      "triage": { "label": "login" }
+    },
+    "logout.flow.json": {
+      "run": "20261019-080100-logout",
+      "verdict": "passed",
+      "reviewed": true
+    }
+  },
+  "cursor": { "generation": 2, "labels": [null, "release"] }
+}

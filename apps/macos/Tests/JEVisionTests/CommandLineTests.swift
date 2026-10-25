@@ -700,19 +700,30 @@ struct CommandLineToolTests {
     let result = try jevision("version", "--json")
     #expect(result.status == 0)
     let json = try #require(JSONSerialization.jsonObject(with: Data(result.out.utf8)) as? [String: Any])
-    #expect(json["jsonVersion"] as? Int == 1)
     #expect(json["version"] as? String == jevisionVersion())
-    let formats = try #require(json["formats"] as? [[String: Any]])
-    #expect(
-      formats.map { $0["file"] as? String } == [
-        "*.flow.json", "*.block.json", "*.template.json", "*.jevmeta", "jevision.project.json", "jevision.environments.json", "jevision.schedule.json",
-        "block.json", "jevision.blocks.json", "report.json", "jevision.notifications.json", "last-results.json", "schedule-history.json",
-      ])
-    #expect(formats.first?["version"] as? Int == Int(formatVersion()))
-    #expect(json["iphoneProtocol"] as? [String: Int] == ["oldest": 1, "newest": 1])
-    #expect(json["cliBridgeProtocol"] as? [String: Int] == ["oldest": 1, "newest": 1])
-    #expect(json["mcpProtocols"] as? [String] == ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"])
+    let fixture = try #require(Bundle.module.url(forResource: "cli-version-1", withExtension: "json", subdirectory: "Fixtures/Contracts"))
+    let baseline = try JSONDecoder().decode(VersionContract.self, from: Data(contentsOf: fixture))
+    let actual = try JSONDecoder().decode(VersionContract.self, from: Data(result.out.utf8))
+    #expect(actual == baseline)
+    #expect(actual.formats.first?.version == Int(formatVersion()))
+    // Required members retain their types and values; additional root members remain additive.
+    var extended = json
+    extended["optionalFutureField"] = ["opaque": true]
+    #expect(try JSONDecoder().decode(VersionContract.self, from: JSONSerialization.data(withJSONObject: extended)) == baseline)
     #expect(try jevision("help", "version").out.contains("Usage: jevision version [--json]"))
+  }
+
+  /// The machine fields frozen for release 1. The app's own version is checked separately,
+  /// while JSONDecoder requires every declared key and ignores additional root members.
+  private struct VersionContract: Decodable, Equatable {
+    struct FileFormat: Decodable, Equatable { let file: String; let version: Int }
+    struct ProtocolRange: Decodable, Equatable { let oldest: Int; let newest: Int }
+    let jsonVersion: Int
+    let formats: [FileFormat]
+    let iphoneProtocol: ProtocolRange
+    let cliBridgeProtocol: ProtocolRange
+    let preferencesFormat: Int
+    let mcpProtocols: [String]
   }
 
   @Test func langWordsTheMessagesInThatLanguage() throws {

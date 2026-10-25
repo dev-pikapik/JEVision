@@ -1,0 +1,23 @@
+{
+  "jsonVersion": 1,
+  "version": "1.0.0",
+  "formats": [
+    { "file": "*.flow.json", "version": 2 },
+    { "file": "*.block.json", "version": 2 },
+    { "file": "*.template.json", "version": 2 },
+    { "file": "*.jevmeta", "version": 1 },
+    { "file": "jevision.project.json", "version": 1 },
+    { "file": "jevision.environments.json", "version": 1 },
+    { "file": "jevision.schedule.json", "version": 1 },
+    { "file": "block.json", "version": 1 },
+    { "file": "jevision.blocks.json", "version": 1 },
+    { "file": "report.json", "version": 1 },
+    { "file": "jevision.notifications.json", "version": 2 },
+    { "file": "last-results.json", "version": 1 },
+    { "file": "schedule-history.json", "version": 1 }
+  ],
+  "iphoneProtocol": { "oldest": 1, "newest": 1 },
+  "cliBridgeProtocol": { "oldest": 1, "newest": 1 },
+  "preferencesFormat": 1,
+  "mcpProtocols": ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
+}
