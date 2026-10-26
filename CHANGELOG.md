@@ -7,25 +7,17 @@ In Russian: [CHANGELOG.ru.md](CHANGELOG.ru.md).
 
 ## [Unreleased]
 
-### Added
+## [1.0.0] - 2026-10-26
 
-- Checks by meaning can require a confidence: with `"confidence": 0.9`, or **Confidence** in the
-  inspector, JEV must be at least 90% sure that the screen shows what is expected. The report
-  says how sure JEV was and what the check needed. Providers that answer only yes or no keep
-  their own answer, and the editor and the report say so.
-- Tests can run their app on a simulated iPhone or iPad in Simulator: choose the device under Runs On in the test card, and optionally a build that is installed before the test. Clicks and typing go through the Simulator window at any size; screenshots come from the device itself.
-- Open File opens links into apps, such as `myapp://inbox`, on the Mac and on a simulated device.
-
-## [1.0.0] - 2026-10-20
-
-The first release of JEVision: UI tests for any Mac app, drawn as flowcharts and run with the real
-mouse, keyboard and screen.
+The first release of JEVision: UI tests for any Mac app or simulated iPhone and iPad app, drawn as
+flowcharts and run with the real mouse, keyboard and screen.
 
 ### Added
 
 **Editor**
 
-- Build a test as a flowchart of blocks, saved as one readable JSON file per test.
+- Build a test as a flowchart of blocks on an unbounded canvas with a minimap, saved as one readable JSON file per test.
+- Switch between projects and group them into sections in the project library sidebar.
 - Press Space to open the block library, grouped by kind, with an icon and one line about each block.
 - Right-click the canvas to put a block exactly where you clicked.
 - Open any command, block or test from the command palette with ⌘K.
@@ -33,6 +25,7 @@ mouse, keyboard and screen.
 - Branch with an If that checks several conditions in order, with Otherwise for everything else.
 - Repeat steps a set number of times, or run another test as a single step.
 - Save selected blocks as a template in the library and add them to other tests.
+- Keep pictures and data files linked to tests with `.jevmeta` labels when they are moved or renamed inside the project.
 - See the chosen environment right on the canvas.
 - Leave sticky notes on the canvas.
 - Write notes about a block with Markdown, attached files and replies, and mark them resolved.
@@ -44,12 +37,13 @@ mouse, keyboard and screen.
 
 - Open the app under test or another app, optionally quitting it first and opening it without its old windows.
 - Open the app under test with a fixed window size and position, so pictures match on every run.
-- Open files or web pages in the browser of your choice, each from a fresh copy so the original stays intact.
+- Open files, links into apps such as `myapp://inbox`, or web pages in the browser of your choice, each from a fresh copy so the original stays intact.
 - Click, hover, drag and scroll with the left, right or middle button, holding ⌃ ⌥ ⇧ ⌘ when needed.
 - Point at a target by its picture, by a point, by an area of the window, or by describing it in words.
 - Type text, optionally into a field found by its picture or description, and press key combinations.
 - Wait until a picture appears or disappears or the screen stops changing, and see how long each wait can take.
 - Pause a test for a set time.
+- Ask an AI model about the screen—whether something is shown, what text or number is there, or where an element is—and save the answer in a variable.
 - Run a shell, Python, Node or AppleScript script and pass typed values, pictures and areas in and out of it.
 - Run a command line, send an HTTP request, wait for a file, or query an SQLite database, and check the answer.
 - Put text or a picture on the clipboard, read text, a picture or copied files from it, or wait for a value.
@@ -65,6 +59,7 @@ mouse, keyboard and screen.
 **Running tests**
 
 - Run one test, a folder or every test of the project with Run All.
+- Run tests on a simulated iPhone or iPad in Simulator: choose the device under Runs On in the test card, and optionally a build that is installed before the test. Clicks and typing go through the Simulator window at any size; screenshots come from the device itself.
 - Watch each run in a small panel, and stop it at any time by pressing Esc twice.
 - Run a test step by step, or mark blocks with Pause Here to stop at them.
 - Keep working safely: a run pauses when you move the mouse and waits until you press Resume.
@@ -83,6 +78,7 @@ mouse, keyboard and screen.
 - Replace a picture shared by several tests in one step, choosing which tests take the new one.
 - Use separate dark versions of reference pictures for apps shown in dark appearance.
 - Check the screen by meaning: describe what it should show in plain words and let an AI model decide.
+- Require a confidence for checks by meaning: with `"confidence": 0.9`, or **Confidence** in the inspector, JEV must be at least 90% sure that the screen shows what is expected, and the report shows both how sure JEV was and what the check needed.
 
 **Reports and history**
 
@@ -107,7 +103,7 @@ mouse, keyboard and screen.
 - Run a test once for every row of a CSV file, or for chosen rows only.
 - View and edit the data table right in the app.
 - Run the same test against staging, production or a local server with environments.
-- Keep passwords and tokens as secrets in the Keychain, separately for each environment if needed.
+- Keep passwords and tokens as secrets in the Keychain for one project or across all projects, and separately for each environment if needed.
 
 **Project board**
 
@@ -147,7 +143,7 @@ mouse, keyboard and screen.
 - Install the `jevision` command from the app, for all users or just for you.
 - Run tests from Terminal and CI with `jevision run`, choosing tests by folder, card, environment and data rows.
 - Run several tests at once with `--parallel`.
-- Check tests with `jevision validate` and tidy them with `jevision fmt`, so changes show as small diffs.
+- Check tests and project files with `jevision validate` and `jevision check`, upgrade older files with `jevision migrate`, and tidy tests with `jevision fmt` so changes show as small diffs.
 - File a failed run as a GitHub issue with `jevision issue`.
 - Install, update, remove and restore custom blocks with `jevision blocks`.
 - Get results as JSON and clear exit codes for scripts.
@@ -185,8 +181,9 @@ mouse, keyboard and screen.
 **iPhone**
 
 - Pair an iPhone with the Mac by scanning a QR code and confirming with Face ID.
-- Give each iPhone full control or view-only access.
+- Give each iPhone view-only access, permission to run tests, or permission to edit tests too.
 - Browse projects and tests, start a test or one row of its data, and follow the run block by block.
+- Edit block settings, add or delete blocks, and rename tests right from the iPhone.
 - Read reports with a short reason for each failure, and look through the run history.
 - See test cards, sticky notes and runs that are waiting for the screen.
 - Look around without a Mac: tap See an Example to browse a Mac built into the app, with tests, notes and runs. It uses no network and saves nothing.
