@@ -57,7 +57,8 @@ struct UpdateDataGuard {
   }
 
   /// The project folder JEVision opens at launch, from its bookmark.
-  static func openProject(in defaults: UserDefaults) -> URL? {
+  static func openProject(in defaults: any PreferenceSource) -> URL? {
+    let defaults = defaults.preferenceStore
     guard let data = defaults.data(forKey: ProjectStore.Key.bookmark) else { return nil }
     var stale = false
     let url = try? URL(resolvingBookmarkData: data, options: [.withoutUI, .withoutMounting], bookmarkDataIsStale: &stale)

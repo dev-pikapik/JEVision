@@ -18,11 +18,12 @@ final class ProjectEnvironments {
 
   private(set) var current = Snapshot()
   @ObservationIgnored private var project: URL?
-  @ObservationIgnored private let defaults: UserDefaults
+  @ObservationIgnored private let defaults: PreferenceStore
 
   static let selectionKey = "selectedEnvironments"
 
-  init(defaults: UserDefaults = Profile.current.defaults) {
+  init(defaults: any PreferenceSource = Profile.current.defaults) {
+    let defaults = defaults.preferenceStore
     self.defaults = defaults
   }
 
@@ -136,7 +137,8 @@ final class ProjectEnvironments {
 
   /// The environments of `project` and the one chosen for it on this Mac: the saved choice, or
   /// else the file's default, or else the first one.
-  static func read(_ project: URL, defaults: UserDefaults = Profile.current.defaults) -> Snapshot {
+  static func read(_ project: URL, defaults: any PreferenceSource = Profile.current.defaults) -> Snapshot {
+    let defaults = defaults.preferenceStore
     do {
       let path = project.path(percentEncoded: false)
       let all = try projectEnvironments(project: path)

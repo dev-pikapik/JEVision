@@ -615,7 +615,7 @@ struct AIChoiceFields: View {
   let help: LocalizedStringKey
   let providerIssues: [Issue]
   let modelIssues: [Issue]
-  @AppStorage(AISettings.providerKey) private var aiProvider = ""
+  @AppPreference(AISettings.providerKey) private var aiProvider = ""
   @Environment(ProjectStore.self) private var project
 
   private var hasAI: Bool { !aiProvider.isEmpty || project.settings.aiScreen.map { !$0.provider.isEmpty } == true }

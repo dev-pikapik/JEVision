@@ -8,7 +8,7 @@ struct AskEditor: View {
   @Binding var question: AskQuestion
   @Binding var saveAs: String
   let context: FieldContext
-  @AppStorage(AISettings.providerKey) private var aiProvider = ""
+  @AppPreference(AISettings.providerKey) private var aiProvider = ""
   @Environment(ProjectStore.self) private var project
   @Environment(\.openSettings) private var openSettings
   /// JEV has an API key; read from the Keychain when finding is chosen, not on every redraw.
@@ -138,7 +138,7 @@ struct AskEditor: View {
         .fixedSize(horizontal: false, vertical: true)
       Spacer(minLength: 4)
       Button(button) {
-        Profile.current.defaults.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+        AppPreferences.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key, in: Profile.current.defaults)
         openSettings()
       }
       .buttonStyle(.link)

@@ -107,10 +107,11 @@ final class OptionalPermissions {
   /// The Bonjour service the Mac declares in its Info.plist.
   private static let service = "_irohv1._udp"
 
-  private let defaults: UserDefaults
+  private let defaults: PreferenceStore
   @ObservationIgnored private var browser: NWBrowser?
 
-  init(defaults: UserDefaults = Profile.current.defaults) {
+  init(defaults: any PreferenceSource = Profile.current.defaults) {
+    let defaults = defaults.preferenceStore
     self.defaults = defaults
   }
 

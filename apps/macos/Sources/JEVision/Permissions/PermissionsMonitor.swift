@@ -19,12 +19,13 @@ final class PermissionsMonitor {
   var missing: [Permission] { Permission.allCases.filter { !granted.contains($0) } }
   var allGranted: Bool { missing.isEmpty }
 
-  private let defaults: UserDefaults
+  private let defaults: PreferenceStore
   @ObservationIgnored private var observer: NSObjectProtocol?
   /// Asked for since JEVision last came to the front: the person is still in System Settings.
   @ObservationIgnored private var away: Set<Permission> = []
 
-  init(defaults: UserDefaults = Profile.current.defaults) {
+  init(defaults: any PreferenceSource = Profile.current.defaults) {
+    let defaults = defaults.preferenceStore
     self.defaults = defaults
     refresh()
     observer = NotificationCenter.default.addObserver(

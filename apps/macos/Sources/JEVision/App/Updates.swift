@@ -26,18 +26,19 @@ final class Updates: NSObject {
   /// When JEVision last looked for an update, by itself or when asked; nil before the first time.
   private(set) var lastCheck: Date?
   @ObservationIgnored private let bundle: Bundle
-  @ObservationIgnored private let defaults: UserDefaults
+  @ObservationIgnored private let defaults: PreferenceStore
   @ObservationIgnored private let feedOverride: String?
   @ObservationIgnored private var controller: SPUStandardUpdaterController?
   @ObservationIgnored private var observation: NSKeyValueObservation?
 
   init(
-    bundle: Bundle = .main, defaults: UserDefaults = Profile.current.defaults,
+    bundle: Bundle = .main, defaults: any PreferenceSource = Profile.current.defaults,
     environment: [String: String] = ProcessInfo.processInfo.environment
   ) {
+    let defaults = defaults.preferenceStore
     self.bundle = bundle
     self.defaults = defaults
-    isAvailable = Self.hasPublicKey(bundle) && !Profile(environment: environment).isolated
+    isAvailable = Self.hasPublicKey(bundle) && !Profile(environment: environment).isolated && defaults.nativeDefaults != nil
     feedOverride = Self.feedOverride(in: environment)
     super.init()
     guard isAvailable else { return }

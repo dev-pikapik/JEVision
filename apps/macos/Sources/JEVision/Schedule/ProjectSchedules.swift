@@ -25,12 +25,13 @@ final class ProjectSchedules {
 
   @ObservationIgnored private var project: URL?
   @ObservationIgnored let agents: ScheduleAgents
-  @ObservationIgnored private let defaults: UserDefaults
+  @ObservationIgnored private let defaults: PreferenceStore
   /// The changes asked of macOS that haven't ended, and the last of them.
   private var changes = 0
   @ObservationIgnored private var lastChange: Task<Result<Void, any Error>, Never>?
 
-  init(agents: ScheduleAgents = ScheduleAgents(), defaults: UserDefaults = Profile.current.defaults) {
+  init(agents: ScheduleAgents = ScheduleAgents(), defaults: any PreferenceSource = Profile.current.defaults) {
+    let defaults = defaults.preferenceStore
     self.agents = agents
     self.defaults = defaults
   }

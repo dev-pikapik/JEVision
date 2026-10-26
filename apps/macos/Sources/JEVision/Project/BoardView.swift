@@ -600,6 +600,7 @@ struct BoardView: View {
         .adaptiveGlass(in: .rect(cornerRadius: 16))
         .overlay(alignment: .topTrailing) {
           Button("Hide Minimap", systemImage: "xmark") { showsMinimap = false }
+            .accessibilityIdentifier(AccessibilityID.Canvas.minimap)
             .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
             .controlSize(.small)
@@ -608,6 +609,7 @@ struct BoardView: View {
         }
     } else {
       Button("Show Minimap", systemImage: "map") { showsMinimap = true }
+        .accessibilityIdentifier(AccessibilityID.Canvas.minimap)
         .labelStyle(.iconOnly)
         .buttonStyle(.borderless)
         .padding(8)

@@ -162,7 +162,7 @@ final class RunCenter {
   /// Whether JEVision is hidden for the runs.
   @ObservationIgnored private var isOutOfTheWay = false
 
-  @ObservationIgnored private let defaults: UserDefaults
+  @ObservationIgnored private let defaults: PreferenceStore
   /// Also hears every run of the project at the URL, for remote access.
   @ObservationIgnored var remoteListener: ((URL) -> (any RunListener)?)?
   /// Starts a run on this Mac when nothing keeps it back, telling the listener how it goes;
@@ -175,12 +175,13 @@ final class RunCenter {
   private static let declinedKey = "gitIgnoreDeclined"
   private static let breakpointsKey = "breakpoints"
 
-  init(defaults: UserDefaults = Profile.current.defaults, starts: Starter? = nil, makeRun: @escaping () -> TestRun = { TestRun() }) {
+  init(defaults: any PreferenceSource = Profile.current.defaults, starts: Starter? = nil, makeRun: @escaping () -> TestRun = { TestRun() }) {
+    let defaults = defaults.preferenceStore
     self.defaults = defaults
     self.starts = starts
     self.makeRun = makeRun
     // The watcher reads on its own thread; reading defaults is safe from any.
-    nonisolated(unsafe) let store = defaults
+    let store = defaults
     input = InputWatcher(settings: { RunInputSettings(store) })
     let saved = defaults.dictionary(forKey: Self.breakpointsKey) as? [String: [String]] ?? [:]
     breakpoints = Dictionary(uniqueKeysWithValues: saved.map { (URL(filePath: $0.key), Set($0.value)) })

@@ -12,12 +12,13 @@ final class ScheduleNotifier {
   static let seenKey = "scheduleNotifiedUpTo"
 
   private let agents: ScheduleAgents
-  private let defaults: UserDefaults
+  private let defaults: PreferenceStore
   private var timer: Timer?
   private var reconciliation: Task<Void, Never>?
   private(set) var reconciliationFailures: [ScheduleAgents.ReconciliationFailure] = []
 
-  init(agents: ScheduleAgents = ScheduleAgents(), defaults: UserDefaults = Profile.current.defaults) {
+  init(agents: ScheduleAgents = ScheduleAgents(), defaults: any PreferenceSource = Profile.current.defaults) {
+    let defaults = defaults.preferenceStore
     self.agents = agents
     self.defaults = defaults
   }
@@ -51,7 +52,8 @@ final class ScheduleNotifier {
 
   /// Runs of `project` that weren't looked at yet, oldest first; they count as looked at now.
   /// A project seen for the first time starts with what it has.
-  static func unseen(_ project: String, defaults: UserDefaults) -> [ScheduledRun] {
+  static func unseen(_ project: String, defaults: any PreferenceSource) -> [ScheduledRun] {
+    let defaults = defaults.preferenceStore
     guard (try? AppPreferences.check(defaults)) != nil else { return [] }
     let runs = (try? scheduledRuns(project: project)) ?? []
     var seen = defaults.dictionary(forKey: seenKey) as? [String: Int64] ?? [:]
@@ -63,7 +65,8 @@ final class ScheduleNotifier {
   }
 
   /// From now on, every run of `project` is told about.
-  static func startWatching(_ project: String, defaults: UserDefaults) {
+  static func startWatching(_ project: String, defaults: any PreferenceSource) {
+    let defaults = defaults.preferenceStore
     guard (try? AppPreferences.check(defaults)) != nil else { return }
     var seen = defaults.dictionary(forKey: seenKey) as? [String: Int64] ?? [:]
     guard seen[project] == nil else { return }

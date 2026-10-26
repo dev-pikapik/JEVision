@@ -133,7 +133,7 @@ struct ScaleUIBenchmarkTests {
     let runs: RunCenter
     let records: RecordCenter
     let summary: SyntheticSummary
-    let defaults: UserDefaults
+    let defaults: PreferenceStore
     let domain: String
 
     func close() {
@@ -141,7 +141,7 @@ struct ScaleUIBenchmarkTests {
       defaults.synchronize()
     }
 
-    func window(_ view: some View) -> some View {
+    @MainActor func window(_ view: some View) -> some View {
       view.environment(project).environment(runs).environment(records).appPreferences(defaults)
     }
   }

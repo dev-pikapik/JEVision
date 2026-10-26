@@ -30,12 +30,13 @@ public final class MacAssistantHost: AssistantHost, @unchecked Sendable {
   private let lock = NSLock()
   /// Watches the person's mouse and keyboard while a run goes.
   private var input: InputWatcher?
-  private let defaults: UserDefaults
+  private let defaults: PreferenceStore
   private let readiness: @Sendable () -> String?
 
   /// `readiness` says what stands in the way of a run now, in words for the assistant to pass on,
   /// or `nil`; it is asked before every run, and again as the run starts.
-  public init(defaults: UserDefaults = Profile.current.appDefaults, readiness: @escaping @Sendable () -> String?) {
+  public init(defaults: any PreferenceSource = Profile.current.appDefaults, readiness: @escaping @Sendable () -> String?) {
+    let defaults = defaults.preferenceStore
     self.defaults = defaults
     self.readiness = readiness
   }

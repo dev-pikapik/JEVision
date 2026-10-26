@@ -3,7 +3,7 @@ import Foundation
 import Synchronization
 
 /// Compatibility of the app's preferences, shared by the app and its command-line helper.
-/// Settings stay in UserDefaults; writes change individual keys and retain unfamiliar keys.
+/// Native settings stay in UserDefaults; profile writes retain their local file and unfamiliar keys.
 public enum AppPreferences {
   public static let formatKey = "preferences.format"
   public static let format = 1
@@ -13,6 +13,7 @@ public enum AppPreferences {
   public struct Failure: LocalizedError, Equatable, Sendable {
     public enum Kind: Sendable { case newer, unreadable, backup }
     public let kind: Kind
+    public init(kind: Kind) { self.kind = kind }
     public var status: Int32 { kind == .newer ? 5 : 3 }
     public var code: String {
       switch kind {
@@ -31,13 +32,13 @@ public enum AppPreferences {
   }
 
   private final class Store: @unchecked Sendable {
-    let defaults: UserDefaults
+    let defaults: PreferenceStore
     let domain: String
     let file: URL
     let backups: URL
     let lock = NSRecursiveLock()
 
-    init(defaults: UserDefaults, domain: String, file: URL, backups: URL) {
+    init(defaults: PreferenceStore, domain: String, file: URL, backups: URL) {
       self.defaults = defaults
       self.domain = domain
       self.file = file
@@ -49,12 +50,18 @@ public enum AppPreferences {
 
   /// Register a concrete domain, without reading it or causing a migration. Injectable stores
   /// use the same path as Profile, so tests never have to inspect the person's preferences.
-  public static func register(_ defaults: UserDefaults, domain: String, file: URL, backups: URL) {
-    stores.withLock { $0[ObjectIdentifier(defaults)] = Store(defaults: defaults, domain: domain, file: file, backups: backups) }
+  public static func register(_ source: any PreferenceSource, domain: String, file: URL, backups: URL) {
+    let defaults = source.preferenceStore
+    stores.withLock { $0[defaults.identity] = Store(defaults: defaults, domain: domain, file: file, backups: backups) }
   }
 
-  private static func store(_ defaults: UserDefaults) -> Store? {
-    stores.withLock { $0[ObjectIdentifier(defaults)] }
+  private static func store(_ source: any PreferenceSource) -> Store? {
+    stores.withLock { $0[source.preferenceStore.identity] }
+  }
+
+  /// The registered native file also provides change observation for literal dotted keys.
+  public static func storedFile(for source: any PreferenceSource) -> URL? {
+    store(source)?.file ?? source.preferenceStore.fileURL
   }
 
   /// Read-only: legacy preferences are supported, but are never stamped by a CLI command.
@@ -62,9 +69,12 @@ public enum AppPreferences {
     try check(Profile.current.appDefaults)
   }
 
-  public static func check(_ defaults: UserDefaults, domain: String? = nil) throws {
+  public static func check(_ source: any PreferenceSource, domain: String? = nil) throws {
+    let defaults = source.preferenceStore
     if let store = store(defaults) {
       try store.lock.withLock { _ = try inspect(store) }
+    } else if let file = defaults.fileURL {
+      _ = try header(try disk(file).values)
     } else if let domain {
       _ = try header(defaults.persistentDomain(forName: domain) ?? [:])
     }
@@ -108,14 +118,21 @@ public enum AppPreferences {
       do {
         try FileManager.default.createDirectory(at: store.file.deletingLastPathComponent(), withIntermediateDirectories: true)
       } catch { throw Failure(kind: .unreadable) }
-      // A cached identical value can otherwise leave an externally restored legacy file unstamped.
-      if snapshot.values[formatKey] != nil {
-        store.defaults.removeObject(forKey: formatKey)
+      do {
+        try store.defaults.transaction(validate: { _ in _ = try inspect(store) }) {
+          // Native defaults may still hold an identical marker from an externally restored file.
+          if snapshot.values[formatKey] != nil {
+            store.defaults.removeObject(forKey: formatKey)
+            guard store.defaults.synchronize() else { throw Failure(kind: .unreadable) }
+          }
+          store.defaults.set(format, forKey: formatKey)
+        }
         guard store.defaults.synchronize() else { throw Failure(kind: .unreadable) }
-        _ = try inspect(store)
+      } catch let failure as Failure {
+        throw failure
+      } catch {
+        throw Failure(kind: .unreadable)
       }
-      store.defaults.set(format, forKey: formatKey)
-      guard store.defaults.synchronize() else { throw Failure(kind: .unreadable) }
       return backup
     }
   }
@@ -124,7 +141,8 @@ public enum AppPreferences {
   /// Refusal is visible to the GUI through one shared error notification; throwing callers
   /// (reset and command entry points) can present or return the error themselves.
   @discardableResult
-  public static func write(in defaults: UserDefaults, _ body: () -> Void) -> Bool {
+  public static func write(in source: any PreferenceSource, _ body: () throws -> Void) -> Bool {
+    let defaults = source.preferenceStore
     do {
       try checkedWrite(in: defaults, body)
       return true
@@ -136,26 +154,33 @@ public enum AppPreferences {
     }
   }
 
-  public static func checkedWrite(in defaults: UserDefaults, domain: String? = nil, _ body: () -> Void) throws {
-    if let store = store(defaults) {
-      try store.lock.withLock {
-        _ = try inspect(store)
-        body()
+  public static func checkedWrite(in source: any PreferenceSource, domain: String? = nil, _ body: () throws -> Void) throws {
+    let defaults = source.preferenceStore
+    do {
+      if let store = store(defaults) {
+        try store.lock.withLock {
+          try defaults.transaction(validate: { _ in _ = try inspect(store) }, body)
+        }
+      } else {
+        try defaults.transaction(validate: { _ in try check(defaults, domain: domain) }, body)
       }
-    } else {
-      try check(defaults, domain: domain)
-      body()
+    } catch let failure as Failure {
+      throw failure
+    } catch {
+      throw Failure(kind: .unreadable)
     }
   }
 
   @discardableResult
-  public static func set(_ value: Any?, forKey key: String, in defaults: UserDefaults) -> Bool {
-    write(in: defaults) { defaults.set(value, forKey: key) }
+  public static func set(_ value: Any?, forKey key: String, in source: any PreferenceSource) -> Bool {
+    let defaults = source.preferenceStore
+    return write(in: defaults) { defaults.set(value, forKey: key) }
   }
 
   @discardableResult
-  public static func removeObject(forKey key: String, in defaults: UserDefaults) -> Bool {
-    write(in: defaults) { defaults.removeObject(forKey: key) }
+  public static func removeObject(forKey key: String, in source: any PreferenceSource) -> Bool {
+    let defaults = source.preferenceStore
+    return write(in: defaults) { defaults.removeObject(forKey: key) }
   }
 
   private struct Snapshot {
@@ -165,12 +190,23 @@ public enum AppPreferences {
   }
 
   private static func inspect(_ store: Store) throws -> Snapshot {
+    let stored = try disk(store.file)
+    let raw = stored.raw
+    let disk = stored.values
+    let diskCurrent = try header(disk)
+    let values = store.defaults.persistentDomain(forName: store.domain) ?? [:]
+    let memoryCurrent = try header(values)
+    // A replaced legacy file needs its own backup even when this process cached an older marker.
+    return Snapshot(current: raw == nil ? memoryCurrent : diskCurrent, values: values, raw: raw)
+  }
+
+  private static func disk(_ file: URL) throws -> (raw: Data?, values: [String: Any]) {
     var raw: Data?
     var disk: [String: Any] = [:]
     // UserDefaults may turn an unreadable plist into an empty domain. Inspect bytes first,
     // without ever writing the underlying defaults file directly.
     do {
-      raw = try Data(contentsOf: store.file)
+      raw = try Data(contentsOf: file)
     } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
     } catch {
       throw Failure(kind: .unreadable)
@@ -184,11 +220,7 @@ public enum AppPreferences {
         throw Failure(kind: .unreadable)
       }
     }
-    let diskCurrent = try header(disk)
-    let values = store.defaults.persistentDomain(forName: store.domain) ?? [:]
-    let memoryCurrent = try header(values)
-    // A replaced legacy file needs its own backup even when this process cached an older marker.
-    return Snapshot(current: raw == nil ? memoryCurrent : diskCurrent, values: values, raw: raw)
+    return (raw, disk)
   }
 
   /// Inspect only the stored header. Argument, global and registration domains cannot opt an

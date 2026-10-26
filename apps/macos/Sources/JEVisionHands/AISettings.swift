@@ -43,9 +43,10 @@ public struct AISettings {
     providers.first { $0.id == id }
   }
 
-  let defaults: UserDefaults
+  let defaults: PreferenceStore
 
-  public init(_ defaults: UserDefaults) {
+  public init(_ defaults: any PreferenceSource) {
+    let defaults = defaults.preferenceStore
     self.defaults = defaults
   }
 
@@ -66,7 +67,7 @@ public struct AISettings {
 
   /// Picks up what the app changed since this process last read its settings.
   public func refresh() {
-    CFPreferencesAppSynchronize(Profile.current.appDefaultsDomain as CFString)
+    defaults.refresh()
   }
 
   /// The chosen model, or the provider's suggestion.
@@ -158,7 +159,8 @@ public struct AISettings {
   }
 
   /// Saves the user's price table.
-  public static func save(prices: [Price], in defaults: UserDefaults) {
+  public static func save(prices: [Price], in defaults: any PreferenceSource) {
+    let defaults = defaults.preferenceStore
     let rows: [[String: Any]] = prices.map {
       ["provider": $0.provider, "model": $0.model, "input": $0.input, "output": $0.output]
     }
@@ -193,7 +195,7 @@ public struct AISettings {
   }
 }
 
-/// UserDefaults and the Keychain may be read from any thread, so the run's thread asks here.
+/// Preferences and the Keychain may be read from any thread, so the run's thread asks here.
 private final class NamedProviders: ProviderSettings, @unchecked Sendable {
   let settings: AISettings
 

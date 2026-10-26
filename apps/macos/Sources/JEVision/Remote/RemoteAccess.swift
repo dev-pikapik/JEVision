@@ -84,7 +84,7 @@ final class RemoteAccess {
   @ObservationIgnored private var sleepAssertion = IOPMAssertionID(0)
   @ObservationIgnored private let runs: RunCenter
   @ObservationIgnored private let project: ProjectStore
-  @ObservationIgnored private let defaults: UserDefaults
+  @ObservationIgnored private let defaults: PreferenceStore
   @ObservationIgnored private let stateDirectory: URL
   @ObservationIgnored private let secretKey: () throws -> Data
 
@@ -100,10 +100,11 @@ final class RemoteAccess {
   static let activityLimit: UInt32 = 200
 
   init(
-    runs: RunCenter, project: ProjectStore, defaults: UserDefaults = Profile.current.defaults,
+    runs: RunCenter, project: ProjectStore, defaults: any PreferenceSource = Profile.current.defaults,
     stateDirectory: URL = Profile.current.supportFolder.appending(path: "Remote", directoryHint: .isDirectory),
     secretKey: @escaping () throws -> Data = RemoteAccess.keychainKey
   ) {
+    let defaults = defaults.preferenceStore
     self.runs = runs
     self.project = project
     self.defaults = defaults

@@ -9,7 +9,8 @@ public enum RunLanguage {
 
   /// The app keeps its choice the way macOS does, as `AppleLanguages`; without one, the Mac's own
   /// list shows through.
-  public static func language(_ defaults: UserDefaults) -> String {
+  public static func language(_ defaults: any PreferenceSource) -> String {
+    let defaults = defaults.preferenceStore
     let preferred = defaults.stringArray(forKey: "AppleLanguages") ?? Locale.preferredLanguages
     return Bundle.preferredLocalizations(from: dateLanguages(), forPreferences: preferred).first ?? "en"
   }

@@ -22,16 +22,16 @@ struct ProfileTests {
     #expect(app.folder == nil)
     #expect(app.supportFolder == URL.applicationSupportDirectory.appending(path: "JEVision", directoryHint: .isDirectory))
     #expect(app.logsFolder == URL.libraryDirectory.appending(path: "Logs/JEVision", directoryHint: .isDirectory))
-    #expect(app.defaults === UserDefaults.standard)
-    #expect(app.appDefaults === UserDefaults.standard)
+    #expect(app.defaults.nativeDefaults === UserDefaults.standard)
+    #expect(app.appDefaults.nativeDefaults === UserDefaults.standard)
     #expect(app.defaultsDomain == AISettings.appDomain)
     #expect(app.appDefaultsDomain == AISettings.appDomain)
     #expect(app.keychainService("JEVision GitHub") == "JEVision GitHub")
 
     let tool = Profile(environment: [Profile.variable: ""], current: "/work", bundleIdentifier: nil)
     #expect(!tool.isolated)
-    #expect(tool.defaults === UserDefaults.standard)
-    #expect(tool.appDefaults !== UserDefaults.standard)
+    #expect(tool.defaults.nativeDefaults === UserDefaults.standard)
+    #expect(tool.appDefaults.nativeDefaults !== UserDefaults.standard)
     #expect(tool.appDefaultsDomain == AISettings.appDomain)
   }
 
@@ -44,7 +44,7 @@ struct ProfileTests {
     #expect(profile.logsFolder.path(percentEncoded: false) == "/work/self/profile/Logs/")
     #expect(profile.defaultsDomain == "/work/self/profile/Settings")
     #expect(profile.appDefaultsDomain == profile.defaultsDomain)
-    #expect(profile.defaults !== UserDefaults.standard)
+    #expect(profile.defaults.nativeDefaults == nil)
     #expect(profile.appDefaults === profile.defaults)
     #expect(profile.keychainService("JEVision GitHub") == "JEVision GitHub (profile /work/self/profile)")
   }
@@ -66,7 +66,7 @@ struct ProfileTests {
     #expect(UserDefaults(suiteName: AISettings.appDomain)?.string(forKey: key) == nil)
   }
 
-  @Test func aProfileLaunchesWithItsOwnLanguageAndNoRestoredWindows() throws {
+  @MainActor @Test func aProfileLaunchesWithItsOwnLanguageAndNoRestoredWindows() throws {
     let profile = Profile(folder: try scratch())
     defer { try? discard(profile) }
 
@@ -77,6 +77,15 @@ struct ProfileTests {
 
     profile.defaults.set(["ru"], forKey: "AppleLanguages")
     #expect(Launch.arguments(profile, current: [:], system: ["de-DE"])["AppleLanguages"] as? [String] == ["ru"])
+
+    let previous = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+    defer { UserDefaults.standard.setVolatileDomain(previous, forName: UserDefaults.argumentDomain) }
+    var current = previous
+    current[OnboardingView.doneKey] = "YES"
+    UserDefaults.standard.setVolatileDomain(current, forName: UserDefaults.argumentDomain)
+    Launch.isolate(profile)
+    #expect(profile.defaults.bool(forKey: OnboardingView.doneKey))
+    #expect(profile.defaults.volatileDomain(forName: UserDefaults.argumentDomain)["AppleLanguages"] as? [String] == ["ru"])
   }
 
   @MainActor @Test func aProfileSavesNoPlacesOfWindowsInThePersonsSettings() {

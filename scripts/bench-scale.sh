@@ -74,6 +74,7 @@ if ((APP)); then
     measure_app "ScaleUIBenchmarkTests.$scenario"
   done
   measure_app CanvasControlTests
+  measure_app BoardMinimapControlTests
   measure_app WorkspaceChromeTests
   measure_app PreferenceBindingTests
 fi

@@ -20,7 +20,8 @@ public struct RunInputSettings: Equatable, Sendable {
   /// The app's settings, from the app or from the `jevision` tool.
   public static var app: RunInputSettings { RunInputSettings(Profile.current.appDefaults) }
 
-  public init(_ defaults: UserDefaults) {
+  public init(_ defaults: any PreferenceSource) {
+    let defaults = defaults.preferenceStore
     pausesOnMouse = defaults.object(forKey: Self.pausesOnMouseKey) as? Bool ?? true
     escapeStops = defaults.object(forKey: Self.escapeStopsKey) as? Bool ?? true
     collapsesToPanel = defaults.object(forKey: Self.collapsesKey) as? Bool ?? true

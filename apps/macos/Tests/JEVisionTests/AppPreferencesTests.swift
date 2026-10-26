@@ -27,8 +27,10 @@ private struct PreferencesFixture {
   }
 
   func replaceHeader(_ value: Any) throws -> Data {
-    let data = try PropertyListSerialization.data(fromPropertyList: [AppPreferences.formatKey: value, "future": ["keep": true]],
-      format: .xml, options: 0)
+    var values = try PropertyListSerialization.propertyList(from: Data(contentsOf: file), format: nil) as? [String: Any] ?? [:]
+    values[AppPreferences.formatKey] = value
+    values["future"] = ["keep": true]
+    let data = try PropertyListSerialization.data(fromPropertyList: values, format: .xml, options: 0)
     try data.write(to: file, options: .atomic)
     return data
   }

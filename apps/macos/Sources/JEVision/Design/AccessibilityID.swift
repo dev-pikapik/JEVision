@@ -59,8 +59,9 @@ enum AccessibilityID {
     static let app = "appPicker.app"
   }
 
-  /// The flowchart of the open test.
+  /// Controls of a test canvas or project board.
   enum Canvas {
+    static let minimap = "canvas.minimap.toggle"
     /// A block; its title is its kind and place in the test, in the app's language.
     static let block = "canvas.block"
   }

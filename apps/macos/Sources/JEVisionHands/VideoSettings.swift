@@ -14,9 +14,10 @@ public struct VideoSettings {
   /// The app's settings, from the app or from the `jevision` tool.
   public static var app: VideoSettings { VideoSettings(Profile.current.appDefaults) }
 
-  let defaults: UserDefaults
+  let defaults: PreferenceStore
 
-  public init(_ defaults: UserDefaults) {
+  public init(_ defaults: any PreferenceSource) {
+    let defaults = defaults.preferenceStore
     self.defaults = defaults
   }
 

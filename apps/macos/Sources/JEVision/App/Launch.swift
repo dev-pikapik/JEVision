@@ -61,9 +61,9 @@ enum Launch {
   /// nor saves the windows of the person's own copy, and what it draws itself, like the menu bar,
   /// is in the profile's language rather than the one chosen in the person's copy.
   static func isolate(_ profile: Profile) {
-    UserDefaults.standard.setVolatileDomain(
-      arguments(profile, current: UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)),
-      forName: UserDefaults.argumentDomain)
+    let args = arguments(profile, current: UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain))
+    UserDefaults.standard.setVolatileDomain(args, forName: UserDefaults.argumentDomain)
+    profile.defaults.setVolatileDomain(args, forName: UserDefaults.argumentDomain)
     forgetWindowPlaces()
   }
 

@@ -31,7 +31,7 @@ final class ProjectBoards {
   /// Where each board was last looked at, so going back to it shows the same place.
   @ObservationIgnored var viewports: [String: BoardViewport] = [:]
   @ObservationIgnored private var project: URL?
-  @ObservationIgnored private let defaults: UserDefaults
+  @ObservationIgnored private let defaults: PreferenceStore
   /// Each board file as last read or written, with whether it is the board of all tests: a board
   /// is read again only when its file changes.
   @ObservationIgnored private var known: [String: (stamp: FileStamp?, allTests: Bool)] = [:]
@@ -40,7 +40,8 @@ final class ProjectBoards {
   nonisolated static let suffix = boardSuffix()
   nonisolated static let folderName = boardsFolder()
 
-  init(defaults: UserDefaults = Profile.current.defaults) {
+  init(defaults: any PreferenceSource = Profile.current.defaults) {
+    let defaults = defaults.preferenceStore
     self.defaults = defaults
   }
 

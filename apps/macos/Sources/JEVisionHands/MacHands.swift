@@ -543,13 +543,16 @@ public final class MacHands: Hands, @unchecked Sendable {
   /// The processes of `app`: those started from its copy when a run uses one.
   public static func runningApps(_ app: String) -> [NSRunningApplication] {
     guard let copy = AppCopies.copy(of: app) else {
-      return NSRunningApplication.runningApplications(withBundleIdentifier: app).filter { !$0.isTerminated }
+      return NSRunningApplication.runningApplications(withBundleIdentifier: app).filter {
+        !$0.isTerminated && kill($0.processIdentifier, 0) == 0
+      }
     }
     // Asked by id rather than taken from NSWorkspace's list, which changes only while the main
     // run loop runs: the command line tool's doesn't, and would never see the copy start.
     let ids = AppCopies.identifiers(of: app, copy: copy)
     return ids.flatMap(NSRunningApplication.runningApplications(withBundleIdentifier:)).filter {
-      !$0.isTerminated && AppCopies.isApp(app, bundle: $0.bundleURL, identifier: $0.bundleIdentifier, copy: copy)
+      !$0.isTerminated && kill($0.processIdentifier, 0) == 0
+        && AppCopies.isApp(app, bundle: $0.bundleURL, identifier: $0.bundleIdentifier, copy: copy)
     }
   }
 

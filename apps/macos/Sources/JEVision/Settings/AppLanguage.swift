@@ -32,8 +32,7 @@ final class AppLanguage: Observable, Sendable {
 
   private let registrar = ObservationRegistrar()
   private let state = Mutex(State())
-  /// Not marked Sendable by the SDK, though it is safe to use from any thread.
-  nonisolated(unsafe) private let defaults: UserDefaults
+  private let defaults: PreferenceStore
   private let domain: String
   private let system: @Sendable () -> [String]
   private let main: Bundle
@@ -62,7 +61,7 @@ final class AppLanguage: Observable, Sendable {
   /// launch and at every change.
   init(
     main: Bundle = .main,
-    defaults: UserDefaults = Profile.current.defaults,
+    defaults: any PreferenceSource = Profile.current.defaults,
     domain: String = Profile.current.defaultsDomain,
     system: @escaping @Sendable () -> [String] = AppLanguage.systemLanguages,
     apply: @escaping @Sendable (String, String, String) -> Void = {
@@ -70,6 +69,7 @@ final class AppLanguage: Observable, Sendable {
       setNumberFormat(decimal: $1, grouping: $2)
     }
   ) {
+    let defaults = defaults.preferenceStore
     self.main = main
     self.apply = apply
     self.defaults = defaults

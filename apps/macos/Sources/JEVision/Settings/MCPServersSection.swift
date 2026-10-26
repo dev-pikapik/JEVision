@@ -30,11 +30,13 @@ enum MCPServers {
   static let key = "ai.mcpServers"
   static let tokenService = "JEVision MCP"
 
-  static func load(from defaults: UserDefaults = Profile.current.defaults) -> [MCPServerEntry] {
-    defaults.data(forKey: key).flatMap { try? JSONDecoder().decode([MCPServerEntry].self, from: $0) } ?? []
+  static func load(from defaults: any PreferenceSource = Profile.current.defaults) -> [MCPServerEntry] {
+    let defaults = defaults.preferenceStore
+    return defaults.data(forKey: key).flatMap { try? JSONDecoder().decode([MCPServerEntry].self, from: $0) } ?? []
   }
 
-  static func save(_ entries: [MCPServerEntry], to defaults: UserDefaults = Profile.current.defaults) {
+  static func save(_ entries: [MCPServerEntry], to defaults: any PreferenceSource = Profile.current.defaults) {
+    let defaults = defaults.preferenceStore
     AppPreferences.set(try? JSONEncoder().encode(entries), forKey: key, in: defaults)
   }
 

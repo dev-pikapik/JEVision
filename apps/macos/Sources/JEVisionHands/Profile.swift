@@ -19,13 +19,13 @@ public final class Profile: @unchecked Sendable {
   /// `~/Library/Logs/JEVision`, or `Logs` in the profile.
   public let logsFolder: URL
   /// The settings of this process: its standard ones, or the profile's. The app's views and
-  /// stores keep theirs here. Not marked Sendable by the SDK, though safe to use from any thread.
-  public let defaults: UserDefaults
+  /// stores keep theirs here. Isolated profiles share their file with command-line processes.
+  public let defaults: PreferenceStore
   /// The name of the domain `defaults` keeps its settings in.
   public let defaultsDomain: String
   /// The app's settings, which the `jevision` tool reads too: from the app itself they are
   /// `defaults`.
-  public let appDefaults: UserDefaults
+  public let appDefaults: PreferenceStore
   /// The name of the domain `appDefaults` keeps its settings in, to pick up the app's changes.
   public let appDefaultsDomain: String
 
@@ -52,11 +52,9 @@ public final class Profile: @unchecked Sendable {
     if let folder = self.folder {
       supportFolder = folder.appending(path: "Support", directoryHint: .isDirectory)
       logsFolder = folder.appending(path: "Logs", directoryHint: .isDirectory)
-      // A suite named by an absolute path keeps its settings in that file, `Settings.plist`,
-      // and every process that names it shares them, as the app's own domain is shared.
+      // Profile preferences are a local file, not a managed UserDefaults search domain.
       let domain = folder.appending(path: "Settings").path(percentEncoded: false)
-      // A path is never one of the names a suite can't have.
-      let settings = UserDefaults(suiteName: domain)!
+      let settings = PreferenceStore(file: folder.appending(path: "Settings.plist"))
       defaults = settings
       defaultsDomain = domain
       appDefaults = settings
@@ -64,10 +62,11 @@ public final class Profile: @unchecked Sendable {
     } else {
       supportFolder = URL.applicationSupportDirectory.appending(path: "JEVision", directoryHint: .isDirectory)
       logsFolder = URL.libraryDirectory.appending(path: "Logs/JEVision", directoryHint: .isDirectory)
-      defaults = .standard
+      defaults = PreferenceStore.standard
       defaultsDomain = bundleIdentifier ?? ""
-      appDefaults =
-        bundleIdentifier == AISettings.appDomain ? .standard : UserDefaults(suiteName: AISettings.appDomain) ?? .standard
+      appDefaults = bundleIdentifier == AISettings.appDomain
+        ? PreferenceStore.standard
+        : PreferenceStore(native: UserDefaults(suiteName: AISettings.appDomain) ?? .standard)
       appDefaultsDomain = AISettings.appDomain
     }
     let backups = supportFolder.appending(path: "Preferences Backups", directoryHint: .isDirectory)

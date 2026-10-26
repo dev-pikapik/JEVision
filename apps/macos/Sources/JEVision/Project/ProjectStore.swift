@@ -128,7 +128,7 @@ final class ProjectStore {
   @ObservationIgnored private(set) var accessedURL: URL?
   @ObservationIgnored private nonisolated(unsafe) var runSavedObserver: (any NSObjectProtocol)?
   @ObservationIgnored private(set) var summaryTask: Task<Void, Never>?
-  @ObservationIgnored private let defaults: UserDefaults
+  @ObservationIgnored private let defaults: PreferenceStore
   /// When a project is opened, for its place in the recent list.
   @ObservationIgnored private let clock: () -> Date
   /// The test running or being recorded now, which leaving the project would cut short; the
@@ -155,7 +155,8 @@ final class ProjectStore {
     if let runSavedObserver { NotificationCenter.default.removeObserver(runSavedObserver) }
   }
 
-  init(defaults: UserDefaults = Profile.current.defaults, clock: @escaping () -> Date = { .now }) {
+  init(defaults: any PreferenceSource = Profile.current.defaults, clock: @escaping () -> Date = { .now }) {
+    let defaults = defaults.preferenceStore
     self.defaults = defaults
     self.clock = clock
     ci.imported = { [weak self] in self?.refreshRuns(soon: true) }

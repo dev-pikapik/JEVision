@@ -267,7 +267,8 @@ enum SettingsReset {
     OnboardingView.doneKey, AppPreferences.formatKey,
   ]
 
-  static func reset(_ defaults: UserDefaults, domain: String) throws {
+  static func reset(_ defaults: any PreferenceSource, domain: String) throws {
+    let defaults = defaults.preferenceStore
     try AppPreferences.checkedWrite(in: defaults, domain: domain) {
       for key in (defaults.persistentDomain(forName: domain) ?? [:]).keys where !kept.contains(key) {
         defaults.removeObject(forKey: key)
