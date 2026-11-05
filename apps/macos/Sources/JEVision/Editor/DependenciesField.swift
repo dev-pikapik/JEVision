@@ -71,10 +71,33 @@ private struct TestSearch: View {
   var body: some View {
     let found = query.isEmpty ? tests : ProjectScanner.tests(in: tests, matching: query)
     VStack(alignment: .leading, spacing: 8) {
-      TextField("Search tests", text: $query)
-        .textFieldStyle(.roundedBorder)
-        .focused($focused)
-        .onSubmit { if let first = found.first { pick(first) } }
+      HStack(spacing: 6) {
+        Image(systemName: "magnifyingglass")
+          .foregroundStyle(.secondary)
+          .font(.system(size: 13, weight: .medium))
+        TextField("Search tests", text: $query)
+          .textFieldStyle(.plain)
+          .focused($focused)
+          .onSubmit { if let first = found.first { pick(first) } }
+        if !query.isEmpty {
+          Button(action: { query = "" }) {
+            Image(systemName: "xmark.circle.fill")
+              .foregroundStyle(.secondary)
+              .font(.system(size: 12))
+          }
+          .buttonStyle(.plain)
+        }
+      }
+      .padding(.horizontal, 8)
+      .frame(height: 28)
+      .background {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+          .fill(Color.primary.opacity(0.06))
+      }
+      .overlay {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+          .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
+      }
       if found.isEmpty {
         Text(tests.isEmpty ? "No other tests in the project" : "No tests match")
           .foregroundStyle(.secondary)

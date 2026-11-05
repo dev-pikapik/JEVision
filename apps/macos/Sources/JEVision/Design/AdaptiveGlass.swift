@@ -17,12 +17,16 @@ private struct AdaptiveGlass<S: InsettableShape>: ViewModifier {
   func body(content: Content) -> some View {
     Group {
       if reduceTransparency {
-        content.background {
-          shape.fill(.background)
-          if let tint { shape.fill(tint) }
-        }
+        content
+          .clipShape(shape)
+          .background {
+            shape.fill(.background)
+            if let tint { shape.fill(tint) }
+          }
       } else {
-        content.glassEffect(tint.map { .regular.tint($0) } ?? .regular, in: shape)
+        content
+          .clipShape(shape)
+          .glassEffect(tint.map { .regular.tint($0) } ?? .regular, in: shape)
       }
     }
     .overlay {
@@ -32,9 +36,12 @@ private struct AdaptiveGlass<S: InsettableShape>: ViewModifier {
           shape.strokeBorder(.primary.opacity(0.6), lineWidth: 1)
         } else if reduceTransparency {
           shape.strokeBorder(.separator, lineWidth: 1)
+        } else {
+          shape.strokeBorder(.primary.opacity(0.10), lineWidth: 0.5)
         }
       }
       .allowsHitTesting(false)
     }
+    .clipShape(shape)
   }
 }

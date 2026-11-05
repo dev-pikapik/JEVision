@@ -20,10 +20,12 @@ struct RunsList: View {
         rows
         if days.isEmpty { Text("No runs yet").foregroundStyle(.secondary) }
       } else {
-        List(selection: $project.selectedRun) { rows }
+        VStack(spacing: 0) {
+          RunSourceBar()
+          List(selection: $project.selectedRun) { rows }
+        }
       }
     }
-    .safeAreaBar(edge: .top, spacing: 0) { if !embedded { RunSourceBar() } }
     // A report of a run the new filter hides would stay open beside a list that lacks it.
     .onChange(of: project.runSource) {
       project.selectedRun = RunHistory.selection(project.selectedRun, in: project.runs, from: project.runSource)

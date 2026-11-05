@@ -56,4 +56,39 @@ struct NativePreferenceContextTests {
     #expect(context.read(key, fallback: false) { $0.bool(forKey: $1) })
     #expect(native.integer(forKey: AppPreferences.formatKey) == AppPreferences.format)
   }
+
+  @Test func inProcessWriteInvalidatesRegisteredNativePreferenceImmediately() async throws {
+    let domain = "test.jevision.native-preference-inprocess." + UUID().uuidString
+    let native = try #require(UserDefaults(suiteName: domain))
+    let folder = FileManager.default.temporaryDirectory.appending(path: domain)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true,
+      attributes: [.posixPermissions: 0o700])
+    let file = FileManager.default.homeDirectoryForCurrentUser
+      .appending(path: "Library/Preferences", directoryHint: .isDirectory)
+      .appending(path: domain + ".plist")
+    defer {
+      native.removePersistentDomain(forName: domain)
+      native.synchronize()
+      try? FileManager.default.removeItem(at: folder)
+    }
+    native.set(AppPreferences.format, forKey: AppPreferences.formatKey)
+    native.set(340.0, forKey: "workspaceSidebarWidth")
+    #expect(native.synchronize())
+    AppPreferences.register(native, domain: domain, file: file,
+      backups: folder.appending(path: "Backups", directoryHint: .isDirectory))
+    try AppPreferences.check(native)
+
+    let context = PreferenceContext(native)
+    let events = Mutex(0)
+    let initial = withObservationTracking {
+      context.read("workspaceSidebarWidth", fallback: 0.0) { $0.double(forKey: $1) }
+    } onChange: { events.withLock { $0 += 1 } }
+    #expect(initial == 340.0)
+
+    #expect(AppPreferences.set(420.0, forKey: "workspaceSidebarWidth", in: native))
+    try await eventuallyAsync("in-process native preference write invalidates immediately", timeout: 1) {
+      events.withLock { $0 } > 0
+    }
+    #expect(context.read("workspaceSidebarWidth", fallback: 0.0) { $0.double(forKey: $1) } == 420.0)
+  }
 }

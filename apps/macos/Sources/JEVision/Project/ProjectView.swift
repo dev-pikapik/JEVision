@@ -106,48 +106,49 @@ struct ProjectView: View {
   private var sidebar: some View {
     @Bindable var project = project
     @Bindable var search = search
-    return testList
-      .scrollContentBackground(.hidden)
-      // Bars, not insets: the list scrolls under them, and their edge effect keeps them readable.
-      .safeAreaBar(edge: .top, spacing: 0) {
-        VStack(spacing: 0) {
-          WorkspaceSearchField(text: $search.text, prompt: project.sidebar == .runs
-            ? String(localized: "Filter runs by test") : String(localized: "Search projects and tests"))
-            .frame(height: 28)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-          HStack(spacing: 8) {
-            Button("Projects", systemImage: "square.grid.2x2") { project.close() }
-              .labelStyle(.iconOnly).buttonStyle(.borderless)
-            Button("Open…", systemImage: "folder.badge.plus", action: project.choose)
-              .labelStyle(.iconOnly).buttonStyle(.borderless)
-            Button("New Project", systemImage: "plus") { project.newProject = .new }
-              .labelStyle(.iconOnly).buttonStyle(.borderless)
-            Spacer()
-          }.padding(.horizontal, 10).padding(.bottom, 8)
-          HStack(spacing: 8) {
-            Picker("Show", selection: $project.sidebar) {
-              Text("Tests").tag(ProjectStore.Sidebar.tests)
-              Text("Runs").tag(ProjectStore.Sidebar.runs)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            if project.sidebar == .tests, !project.items.isEmpty { TestFilterMenu() }
+    return VStack(spacing: 0) {
+      VStack(spacing: 8) {
+        WorkspaceSearchField(text: $search.text, prompt: project.sidebar == .runs
+          ? String(localized: "Filter runs by test") : String(localized: "Search projects and tests"))
+          .frame(height: 28)
+
+        HStack(spacing: 6) {
+          Picker("Show", selection: $project.sidebar) {
+            Text("Tests").tag(ProjectStore.Sidebar.tests)
+            Text("Runs").tag(ProjectStore.Sidebar.runs)
           }
-          .padding(.horizontal, 10)
-          .padding(.bottom, 6)
-          if project.sidebar == .tests, project.filtersTests { TestFilterBar() }
+          .pickerStyle(.segmented)
+          .labelsHidden()
+
+          Spacer(minLength: 4)
+
+          if project.sidebar == .tests, !project.items.isEmpty {
+            TestFilterMenu()
+          }
+          Button("Projects", systemImage: "square.grid.2x2") { project.close() }
+            .labelStyle(.iconOnly).buttonStyle(.borderless)
+          Button("Open…", systemImage: "folder.badge.plus", action: project.choose)
+            .labelStyle(.iconOnly).buttonStyle(.borderless)
+          Button("New Project", systemImage: "plus") { project.newProject = .new }
+            .labelStyle(.iconOnly).buttonStyle(.borderless)
+        }
+
+        if project.sidebar == .tests, project.filtersTests { TestFilterBar() }
+        Divider().opacity(0.3)
+      }
+      .padding(.horizontal, 10)
+      .padding(.top, 10)
+      testList
+        .scrollContentBackground(.hidden)
+      if project.rootURL != nil {
+        VStack(spacing: 0) {
+          Divider().opacity(0.3)
+          EnvironmentChip()
+          ScheduleChip()
+          if let status = project.git.status { GitChip(status: status) }
         }
       }
-      .safeAreaBar(edge: .bottom, spacing: 0) {
-        VStack(spacing: 0) {
-          if project.rootURL != nil {
-            EnvironmentChip()
-            ScheduleChip()
-            if let status = project.git.status { GitChip(status: status) }
-          }
-        }
-      }
+    }
   }
 
   private var workspaceDetail: some View {

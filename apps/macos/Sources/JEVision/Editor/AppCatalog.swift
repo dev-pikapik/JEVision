@@ -128,11 +128,34 @@ private struct AppList: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      TextField(text: $query, prompt: Text("Search apps")) { Text("Search apps") }
-        .textFieldStyle(.roundedBorder)
-        .accessibilityIdentifier(AccessibilityID.AppPicker.search)
-        .padding(10)
-        .onSubmit { if let first = highlighted ?? matches.first?.bundleID { choose(first) } }
+      HStack(spacing: 6) {
+        Image(systemName: "magnifyingglass")
+          .foregroundStyle(.secondary)
+          .font(.system(size: 13, weight: .medium))
+        TextField(text: $query, prompt: Text("Search apps")) { Text("Search apps") }
+          .textFieldStyle(.plain)
+          .accessibilityIdentifier(AccessibilityID.AppPicker.search)
+          .onSubmit { if let first = highlighted ?? matches.first?.bundleID { choose(first) } }
+        if !query.isEmpty {
+          Button(action: { query = "" }) {
+            Image(systemName: "xmark.circle.fill")
+              .foregroundStyle(.secondary)
+              .font(.system(size: 12))
+          }
+          .buttonStyle(.plain)
+        }
+      }
+      .padding(.horizontal, 8)
+      .frame(height: 28)
+      .background {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+          .fill(Color.primary.opacity(0.06))
+      }
+      .overlay {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+          .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
+      }
+      .padding(10)
       List(selection: $highlighted) {
         if let noneTitle, query.isEmpty {
           noneTitle.tag(String?.none)

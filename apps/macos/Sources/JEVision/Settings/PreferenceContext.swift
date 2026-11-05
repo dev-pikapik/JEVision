@@ -18,6 +18,7 @@ final class PreferenceContext: Observable {
   private var started = false
   private var usable = true
   private var pendingEvent = false
+  private var pendingMemoryRefresh = false
   private var pendingNativeRefresh = false
   private var observedFile: URL?
   private var stamp: PreferenceFileStamp?
@@ -73,6 +74,7 @@ final class PreferenceContext: Observable {
 
   private func scheduleRefresh(fromFile: Bool = false) {
     pendingNativeRefresh = pendingNativeRefresh || fromFile
+    if !fromFile { pendingMemoryRefresh = true }
     guard !pendingEvent else { return }
     pendingEvent = true
     Task { @MainActor [weak self] in
@@ -80,19 +82,22 @@ final class PreferenceContext: Observable {
       await Task.yield()
       guard let self else { return }
       pendingEvent = false
+      let fromMemory = pendingMemoryRefresh
       let refreshNative = pendingNativeRefresh
+      pendingMemoryRefresh = false
       pendingNativeRefresh = false
-      refresh(native: refreshNative)
+      refresh(fromMemory: fromMemory, native: refreshNative)
     }
   }
 
-  private func refresh(native: Bool) {
+  private func refresh(fromMemory: Bool, native: Bool) {
     let previousUsable = usable
     usable = validate(refreshNative: native)
     guard usable else { return }
     if let file = observedFile {
       let newest = PreferenceFileStamp(file)
-      guard newest != stamp || !previousUsable else { return }
+      let inMemoryNative = fromMemory && store.fileURL == nil
+      guard inMemoryNative || newest != stamp || !previousUsable else { return }
       stamp = newest
     }
     registrar.withMutation(of: self, keyPath: \.revision) { serial &+= 1 }

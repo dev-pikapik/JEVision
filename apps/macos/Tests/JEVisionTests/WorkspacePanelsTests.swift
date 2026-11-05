@@ -60,4 +60,108 @@ struct WorkspacePanelsTests {
     #expect(editor.string.isEmpty)
     #expect(!coordinator.control(field, textView: editor, doCommandBy: #selector(NSResponder.cancelOperation(_:))))
   }
+
+  @MainActor @Test func draggingThePanelHandleResizesSmoothlyInWindowCoordinates() throws {
+    final class WidthBox { var value = 340.0 }
+    let box = WidthBox()
+    struct Harness: View {
+      let box: WidthBox
+      @State private var width = 340.0
+      var body: some View {
+        Color.clear
+          .frame(width: width, height: 400)
+          .overlay(alignment: .trailing) {
+            WorkspacePanelResizer(
+              width: Binding(get: { width }, set: { width = $0; box.value = $0 }),
+              minimum: 240, maximum: 600, available: 1200, trailingEdge: true, label: Text("Projects"))
+          }
+      }
+    }
+
+    let host = NSHostingView(rootView: Harness(box: box))
+    host.frame = CGRect(x: 0, y: 0, width: 800, height: 400)
+    let window = NSWindow(
+      contentRect: host.frame, styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+    window.contentView = host
+    host.layoutSubtreeIfNeeded()
+
+    func findHandle(in root: NSView) -> WorkspacePanelResizeHandle.HandleView? {
+      if let handle = root as? WorkspacePanelResizeHandle.HandleView { return handle }
+      for child in root.subviews {
+        if let found = findHandle(in: child) { return found }
+      }
+      return nil
+    }
+
+    let handle = try #require(findHandle(in: host))
+    handle.beginDrag(atWindowX: 340)
+    handle.continueDrag(toWindowX: 400)
+    host.layoutSubtreeIfNeeded()
+    #expect(box.value == 400)
+    handle.continueDrag(toWindowX: 460)
+    host.layoutSubtreeIfNeeded()
+    #expect(box.value == 460)
+    handle.finishDrag()
+  }
+
+  @MainActor @Test func adaptiveGlassSidebarClipsScrollViewsToRoundedCornersWithoutScrollPockets() {
+    let view = VStack(spacing: 0) {
+      Text("Header").frame(height: 80)
+      List {
+        Section("Projects") {
+          Text("Demo")
+        }
+      }
+      .listStyle(.sidebar)
+      .scrollContentBackground(.hidden)
+      Text("Footer").frame(height: 30)
+    }
+    .frame(width: 340, height: 500)
+    .adaptiveGlass(in: .rect(cornerRadius: 20))
+    .padding(8)
+
+    let host = NSHostingView(rootView: view)
+    host.frame = CGRect(x: 0, y: 0, width: 356, height: 516)
+    let window = NSWindow(
+      contentRect: host.frame, styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+    window.contentView = host
+    host.layoutSubtreeIfNeeded()
+    window.displayIfNeeded()
+
+    func hasRoundedClip(_ layer: CALayer) -> Bool {
+      if layer.cornerRadius == 20 && layer.masksToBounds { return true }
+      return (layer.sublayers ?? []).contains(where: hasRoundedClip)
+    }
+    func hasScrollPocket(_ view: NSView) -> Bool {
+      if view.className.contains("NSScrollPocket") { return true }
+      return view.subviews.contains(where: hasScrollPocket)
+    }
+
+    #expect(host.layer.map(hasRoundedClip) == true)
+    #expect(!hasScrollPocket(host))
+  }
+
+  @MainActor @Test func workspaceSearchFieldUsesModernRoundedStyling() throws {
+    var query = ""
+    let search = WorkspaceSearchField(text: Binding(get: { query }, set: { query = $0 }), prompt: "Find tests")
+    let host = NSHostingView(rootView: search.frame(width: 240, height: 28))
+    host.frame = CGRect(x: 0, y: 0, width: 240, height: 28)
+    let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+    window.contentView = host
+    host.layoutSubtreeIfNeeded()
+
+    func findSearchField(in view: NSView) -> NSSearchField? {
+      if let sf = view as? NSSearchField { return sf }
+      for sub in view.subviews {
+        if let found = findSearchField(in: sub) { return found }
+      }
+      return nil
+    }
+
+    let field = try #require(findSearchField(in: host))
+    #expect(field.wantsLayer)
+    #expect(!field.isBordered)
+    #expect(!field.isBezeled)
+    #expect(!field.drawsBackground)
+  }
 }
